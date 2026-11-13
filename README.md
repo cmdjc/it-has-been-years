@@ -4,6 +4,8 @@ A short first-person browser game about scale. You walk across a calm ocean of p
 
 All textures and sounds are made by code at runtime. The project has no image, model, or audio files.
 
+Play it at https://cmdjc.github.io/it-has-been-years/
+
 ## Controls
 
 - Touch: the left half of the screen is a joystick for walking. Drag on the right half to look.
@@ -74,3 +76,11 @@ legacy/             the original single-file game, three other prototype games, 
 ## Rendering notes
 
 The tower is about 1000 km tall, and the floor tiles are a few centimeters. One depth buffer cannot hold both scales. So each frame draws a far scene (sky, sea, tower, planet) first, clears the depth buffer, and then draws the near scene. At the summit the far scene draws in two depth ranges. three.js stays at version 0.128.0, because the bloom pipeline uses `WebGLMultisampleRenderTarget`, which later versions removed.
+
+## Deployment
+
+A GitHub Actions workflow (`.github/workflows/pages.yml`) deploys the game to GitHub Pages on each push to `main`. It runs `npm run check` first. The e2e tests do not run there, because they need a local Brave.
+
+## License
+
+It Has Been Years is licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE).
