@@ -56,5 +56,5 @@ export function pendingEvent(state) {
   if (free && !state.finalDone && z < DIVE_Z) return "dive";
   if (free && state.backSkipI < SKIPS.BACK_JUMP.length && z > state.backNext) return "back";
   if (free && Math.hypot(x, z - TOP.BEAM_Z) < BEAM_RADIUS) return "beam";
-  return state.walked > state.nextSkip ? "skip" : null;
+  return null;
 }

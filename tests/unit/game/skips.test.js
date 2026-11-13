@@ -190,9 +190,9 @@ describe("pendingEvent", () => {
     expect(pendingEvent(topState({ player, beamEnd: {} }))).toBeNull();
   });
 
-  it("falls through to the distance skip in the top phase", () => {
-    expect(pendingEvent(topState({ topSkipI: 2, walked: 101 }))).toBe("skip");
-    expect(pendingEvent(topState({ topSkipI: 2, walked: 101, dive: {} }))).toBe("skip");
+  it("never skips by distance in the top phase", () => {
+    expect(pendingEvent(topState({ topSkipI: 2, walked: 101 }))).toBeNull();
+    expect(pendingEvent(topState({ topSkipI: 2, walked: 101, dive: {} }))).toBeNull();
   });
 
   it("orders topSkip before dive before back before beam", () => {

@@ -1,27 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { mulberry32 } from "../../../src/core/rng.js";
+import { spyGl } from "../helpers/spyGl.js";
 import { stubCanvas } from "../helpers/stubCanvas.js";
 import { createMaterials } from "../../../src/gfx/materials.js";
 import { createView, createQuality, adapt } from "../../../src/gfx/renderer.js";
-
-function spyGl() {
-  const calls = [];
-  let pixelRatio = 1;
-  const gl = {
-    calls,
-    autoClear: true,
-    domElement: {},
-    capabilities: { isWebGL2: true, getMaxAnisotropy: () => 8 },
-    getPixelRatio: () => pixelRatio,
-    setPixelRatio: (value) => { pixelRatio = value; calls.push({ call: "setPixelRatio", value }); },
-    setSize: (w, h) => calls.push({ call: "setSize", w, h }),
-    setRenderTarget: (target) => calls.push({ call: "setRenderTarget", target }),
-    clear: () => calls.push({ call: "clear" }),
-    clearDepth: () => calls.push({ call: "clearDepth" }),
-    render: (scene) => calls.push({ call: "render", scene, near: null, far: null }),
-  };
-  return gl;
-}
 
 const win = { innerWidth: 800, innerHeight: 400, devicePixelRatio: 2 };
 
