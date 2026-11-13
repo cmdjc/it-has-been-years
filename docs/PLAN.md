@@ -145,7 +145,7 @@ A Sonnet `implementer` subagent does each task, TDD, on branch `rebuild`, with o
 | 12 | `game/dive.js` and `game/beam.js`: pure cutscene state machines that return the camera pose and events | 883-910, 1002-1039, 1047-1052 | run to tip, crouch at 0.8 and 0.95 s, fly impulse, fall1 for 58.8 s then a skip event, `wakeAtSea` at mid-action, fall2 advances through the curtain, eye open and dilate curves, end event, beam rises through its final curtain and ends at 10 s | done (f44f66e) |
 | 13a | `game/game.js` (done 94aec8e: game module and headless full run). 13b: the rest of this row. Task 13 covers `game/game.js`, full `main.js`, `debug.js`. Connect everything. `?stage=` with the v26 codes, `?timescale=N`, and `window.__ihby` hooks (`state()`, `input(fwd,str)`), only with `?debug`. | 702-708, 761-782, 795-831, 890-919, 950-1061, 1150-1172, v26 802-811 | headless full run to both endings, final-skip sequence, debug parser, e2e: each stage renders with zero errors | done (94aec8e, 0a83eda) |
 | 14 | E2E coverage: full playthrough at `?timescale` to both end cards, touch walking through `Input.dispatchTouchEvent`, parity with `legacy/it-has-been-years-stages.html` at each stage code, frame-time report | n/a | all listed e2e tests pass | done (0f4d445) |
-| 15 | Final: Codex review of `main..rebuild`, fixes by an implementer, README.md, fast-forward merge to `main`, final commit | n/a | `npm run check` and `npm run e2e` pass | todo |
+| 15 | Final: Codex review of `main..rebuild`, fixes by an implementer, README.md, fast-forward merge to `main`, final commit | n/a | `npm run check` and `npm run e2e` pass | done (87b82db) |
 
 ## Plan review
 
@@ -184,3 +184,13 @@ Each brief gives:
 - Brave on port 9222 runs headless, so WebGL can use SwiftShader (software rendering). E2E checks correctness and errors, not frame rate. Visual quality needs an owner check on a device.
 - The legacy textures use `Math.random`. The seeded version changes the tile tint noise a small amount. This is within "same experience".
 - Floating-point precision at the 1e6 to 3e8 scale: the port keeps every offset (CX, farSlab, the two depth ranges) unchanged.
+
+## Final review
+
+Codex reviewed the full rebuild on 2026-11-12. The verdict was APPROVE WITH CHANGES, with 1 IMPORTANT and 2 MINOR findings and no BLOCKER. Commit 87b82db fixes all three:
+
+- Look input now applies and clamps pitch per event, as in legacy.
+- Alias keys such as W and ArrowUp count as one key.
+- The arch rng-order test now fails if the two rng calls swap.
+
+After the fixes, `npm run check` passes with 329 unit tests, and `npm run e2e` passes with 32 tests.
