@@ -1,0 +1,9 @@
+{
+  "name": "fear-games",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Browser-based fear-themed games (three.js r128). See HANDOFF.md.",
+  "scripts": {
+    "serve": "npx --yes serve games -l 5173"
+  }
+}

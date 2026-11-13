@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>The Long Bridge</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+html,body{margin:0;height:100%;background:#05070a;overflow:hidden;color:#cfd8e3;font-family:Georgia,"Times New Roman",serif;touch-action:none}
+canvas{display:block;position:fixed;inset:0}
+#cap{position:fixed;left:0;right:0;bottom:17%;text-align:center;font-style:italic;font-size:clamp(16px,4.4vw,24px);letter-spacing:.04em;line-height:1.5;padding:0 9%;opacity:0;transition:opacity 2.2s ease;text-shadow:0 0 14px #000,0 0 4px #000;pointer-events:none}
+#cap.on{opacity:.93}
+#vig{position:fixed;inset:0;pointer-events:none;opacity:0;background:radial-gradient(ellipse at 50% 50%,rgba(0,0,0,0) 38%,rgba(0,0,0,.55) 75%,rgba(0,0,0,.95) 100%)}
+#hud{position:fixed;left:16px;bottom:14px;font:12px/1 Georgia,serif;font-style:italic;letter-spacing:.12em;color:#7d8da0;opacity:0;transition:opacity 3s;pointer-events:none}
+#hud.on{opacity:.7}
+#joy{position:fixed;width:120px;height:120px;margin:-60px 0 0 -60px;border-radius:50%;border:1px solid rgba(180,200,220,.22);display:none;pointer-events:none}
+#knob{position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;background:rgba(180,200,220,.18);border:1px solid rgba(180,200,220,.3)}
+#black{position:fixed;inset:0;background:#000;opacity:1;transition:opacity 3.5s ease;pointer-events:none}
+#start,#end{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:8vw;background:radial-gradient(ellipse at 50% 60%,#2a3a4e 0%,#0c1117 75%)}
+#end{display:none;background:none;opacity:0;transition:opacity 4s ease;z-index:5}
+h1{font-weight:400;font-size:clamp(34px,10vw,64px);letter-spacing:.08em;margin:0 0 .3em;color:#e4eaf1}
+.sub{font-style:italic;font-size:clamp(15px,4vw,19px);color:#8fa0b4;max-width:26em;line-height:1.55;margin:0 0 2.4em}
+.how{font-size:14px;color:#6f8094;line-height:1.8;margin:0 0 2.6em;max-width:24em}
+button{font:inherit;font-size:18px;letter-spacing:.2em;color:#dfe7ef;background:transparent;border:1px solid rgba(200,215,230,.45);padding:.85em 2.2em;border-radius:2px;cursor:pointer}
+button:active{background:rgba(200,215,230,.14)}
+#end p{font-style:italic;font-size:clamp(16px,4.4vw,22px);color:#9fb0c2;margin:0 0 2em;line-height:1.6;max-width:24em}
+@media (prefers-reduced-motion:reduce){#cap,#hud,#black,#end{transition-duration:.3s}}
+</style>
+</head>
+<body>
+<div id="vig"></div>
+<div id="cap"></div>
+<div id="hud"></div>
+<div id="joy"><div id="knob"></div></div>
+<div id="black"></div>
+
+<div id="start">
+  <h1>THE LONG BRIDGE</h1>
+  <p class="sub">A slow walk across something that was built for things much larger than you.</p>
+  <p class="how">Left thumb: walk.<br>Right thumb: look.<br>Keyboard: WASD to walk, drag the mouse to look.<br><br>Headphones help. So does looking up.</p>
+  <button id="go">BEGIN</button>
+</div>
+
+<div id="end">
+  <p>The bridge is still there.<br>So are they.<br>Neither one noticed.</p>
+  <button id="again">WALK AGAIN</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+"use strict";
+const $ = id => document.getElementById(id);
+const FOG = 0x4f647d;
+const BRIDGE_LEN = 1100;
+
+/* ---------- renderer / scene ---------- */
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+} catch (e) {
+  document.body.innerHTML = '<p style="padding:12vw;font-style:italic">This game needs WebGL, which is not available here.</p>';
+  return;
+}
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+renderer.setSize(innerWidth, innerHeight);
+document.body.prepend(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(FOG);
+scene.fog = new THREE.FogExp2(FOG, 0.0006);
+const camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, 0.2, 7000);
+camera.rotation.order = "YXZ";
+
+scene.add(new THREE.HemisphereLight(0xc8dcf2, 0x4a5563, 2.8));
+const sun = new THREE.DirectionalLight(0xd0e0f2, 1.3);
+sun.position.set(0.3, 1, 0.2);
+scene.add(sun);
+const lamp = new THREE.PointLight(0xffe4bc, 3.2, 90, 1.2);
+scene.add(lamp);
+
+/* seeded random so the world is the same every time */
+let seed = 1337;
+const rand = () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+
+function canvasTex(w, h, draw, rx, ry) {
+  const c = document.createElement("canvas"); c.width = w; c.height = h;
+  draw(c.getContext("2d"), w, h);
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry); t.anisotropy = 4;
+  return t;
+}
+
+/* ---------- bridge ---------- */
+const grateTex = canvasTex(32, 32, (g, w, h) => {
+  g.fillStyle = "#566a80"; g.fillRect(0, 0, w, h);
+  g.fillStyle = "#161c24"; g.fillRect(0, 0, w, 3); g.fillRect(0, 0, 3, h);
+  g.fillStyle = "#6c8099"; g.fillRect(3, 3, w - 3, 2);
+}, 8, 2200);
+const deckMat = new THREE.MeshLambertMaterial({ map: grateTex });
+const steelMat = new THREE.MeshLambertMaterial({ color: 0x66778c });
+
+const catwalk = new THREE.Mesh(new THREE.BoxGeometry(4, 0.3, BRIDGE_LEN + 0.2), deckMat);
+catwalk.position.set(0, -0.15, -5 - BRIDGE_LEN / 2); scene.add(catwalk);
+const plat0 = new THREE.Mesh(new THREE.BoxGeometry(10, 0.3, 30), steelMat);
+plat0.position.set(0, -0.15, 10); scene.add(plat0);
+const plat1 = new THREE.Mesh(new THREE.BoxGeometry(18, 0.3, 60), steelMat);
+plat1.position.set(0, -0.15, -1105 - 30); scene.add(plat1);
+const END_Z = -1105;   // where the end platform begins
+const START_Z = -5;
+
+const posts = [];
+function rail(x1, z1, x2, z2) {
+  const dx = x2 - x1, dz = z2 - z1, len = Math.hypot(dx, dz);
+  const n = Math.max(1, Math.round(len / 3));
+  for (let i = 0; i <= n; i++) posts.push(x1 + dx * i / n, z1 + dz * i / n);
+  [1.08, 0.55].forEach((y, k) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(k ? 0.04 : 0.07, k ? 0.04 : 0.07, len), steelMat);
+    m.position.set((x1 + x2) / 2, y, (z1 + z2) / 2);
+    m.rotation.y = Math.atan2(dx, dz);
+    scene.add(m);
+  });
+}
+rail(-2, START_Z, -2, END_Z); rail(2, START_Z, 2, END_Z);
+rail(-5, 25, -5, START_Z); rail(5, 25, 5, START_Z); rail(-5, 25, 5, 25);
+rail(-5, START_Z, -2, START_Z); rail(5, START_Z, 2, START_Z);
+rail(-2, END_Z, -9, END_Z); rail(2, END_Z, 9, END_Z);
+rail(-9, END_Z, -9, END_Z - 60); rail(9, END_Z, 9, END_Z - 60); rail(-9, END_Z - 60, 9, END_Z - 60);
+
+const postMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(0.06, 1.1, 0.06), steelMat, posts.length / 2);
+const mtx = new THREE.Matrix4();
+for (let i = 0; i < posts.length / 2; i++) { mtx.makeTranslation(posts[i * 2], 0.55, posts[i * 2 + 1]); postMesh.setMatrixAt(i, mtx); }
+scene.add(postMesh);
+
+/* structure under the deck */
+const nBeams = Math.floor(BRIDGE_LEN / 8);
+const beams = new THREE.InstancedMesh(new THREE.BoxGeometry(5, 0.35, 0.35), steelMat, nBeams);
+for (let i = 0; i < nBeams; i++) { mtx.makeTranslation(0, -0.5, -5 - i * 8); beams.setMatrixAt(i, mtx); }
+scene.add(beams);
+[-1.8, 1.8].forEach(x => { const b = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.6, BRIDGE_LEN), steelMat); b.position.set(x, -0.6, -5 - BRIDGE_LEN / 2); scene.add(b); });
+for (let z = -40; z > END_Z - 50; z -= 90) {
+  const p = new THREE.Mesh(new THREE.BoxGeometry(1.4, 400, 1.4), steelMat);
+  p.position.set(0, -200.5, z); scene.add(p);
+}
+
+/* lamps */
+const glowTex = canvasTex(64, 64, (g, w, h) => {
+  const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, "rgba(255,225,170,1)"); gr.addColorStop(0.25, "rgba(255,200,130,.35)"); gr.addColorStop(1, "rgba(255,190,120,0)");
+  g.fillStyle = gr; g.fillRect(0, 0, w, h);
+}, 1, 1);
+const lampOn = new THREE.MeshBasicMaterial({ color: 0xffdca0 });
+const lampOff = new THREE.MeshBasicMaterial({ color: 0x2a2f36 });
+for (let z = -18; z > END_Z + 10; z -= 36) {
+  const pole = new THREE.Mesh(new THREE.BoxGeometry(0.08, 2.5, 0.08), steelMat);
+  pole.position.set(-1.9, 1.25, z); scene.add(pole);
+  const on = rand() > 0.18;
+  const head = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.12, 0.34), on ? lampOn : lampOff);
+  head.position.set(-1.9, 2.5, z); scene.add(head);
+  if (on) {
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.8 }));
+    s.scale.set(7, 7, 1); s.position.set(-1.9, 2.4, z); scene.add(s);
+  }
+}
+
+/* ---------- the floor, 400 m down ---------- */
+const FLOOR_Y = -400;
+const gridTex = canvasTex(128, 128, (g, w, h) => {
+  g.fillStyle = "#1a2531"; g.fillRect(0, 0, w, h);
+  g.fillStyle = "#6a8aa8"; g.fillRect(0, 0, w, 2); g.fillRect(0, 0, 2, h);
+}, 200, 200);
+const floorMat = new THREE.MeshBasicMaterial({ map: gridTex, transparent: true });
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(8000, 8000), floorMat);
+floor.rotation.x = -Math.PI / 2; floor.position.set(0, FLOOR_Y, -600); scene.add(floor);
+
+/* ---------- megastructure ---------- */
+const colMat = new THREE.MeshLambertMaterial({ color: 0x4a5a6e });
+const doorMat = new THREE.MeshBasicMaterial({ color: 0xe8a860 });
+const warn = [[], []];
+const nearGirders = [];
+
+for (let side = -1; side <= 1; side += 2) {
+  /* near columns, close to the bridge */
+  for (let z = 70; z > -1650; z -= 85 + rand() * 40) {
+    const r = 10 + rand() * 9;
+    const cx = side * (r + 6 + rand() * 55);
+    const col = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 1.12, 1150, 10), colMat);
+    col.position.set(cx, 175, z); scene.add(col);
+    warn[Math.random() > 0.5 ? 0 : 1].push(cx, 754, z);
+    for (let y = 100; y < 750; y += 160) warn[(y / 160 | 0) & 1].push(cx - side * (r + 0.6), y, z);
+    if (rand() < 0.3 && z < 0 && z > END_Z) {
+      const d = new THREE.Mesh(new THREE.BoxGeometry(0.5, 2.3, 1.1), doorMat);
+      d.position.set(cx - side * (r - 0.1), 1.15, z); scene.add(d);
+      const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.45 }));
+      s.scale.set(9, 9, 1); s.position.set(cx - side * (r - 1), 1.4, z); scene.add(s);
+    }
+  }
+  /* far columns, vast */
+  for (let z = 400; z > -2200; z -= 200 + rand() * 90) {
+    const r = 45 + rand() * 55;
+    const cx = side * (780 + rand() * 1500);
+    const col = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 1.1, 3400, 12), colMat);
+    col.position.set(cx, 1300, z); scene.add(col);
+    for (let y = -300; y < 3000; y += 260) warn[(y / 260 | 0) & 1].push(cx - side * r, y, z);
+  }
+}
+/* girders spanning the near columns, high overhead */
+const girderMat = new THREE.MeshLambertMaterial({ color: 0x56677c });
+for (let z = -30; z > -1700; z -= 180) {
+  [720, 420].forEach(y => {
+    const g = new THREE.Mesh(new THREE.BoxGeometry(260, 22, 26), girderMat);
+    g.position.set(0, y, z); scene.add(g);
+  });
+}
+const warnMats = [0, 1].map(i => {
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.Float32BufferAttribute(warn[i], 3));
+  const m = new THREE.PointsMaterial({ color: 0xff3a22, size: 7, sizeAttenuation: true, transparent: true, depthWrite: false, fog: false });
+  scene.add(new THREE.Points(geo, m));
+  return m;
+});
+
+/* dust motes for parallax */
+const NM = 260, moteP = new Float32Array(NM * 3);
+for (let i = 0; i < NM; i++) { moteP[i * 3] = (rand() - .5) * 60; moteP[i * 3 + 1] = rand() * 30 - 5; moteP[i * 3 + 2] = (rand() - .5) * 60; }
+const moteGeo = new THREE.BufferGeometry(); moteGeo.setAttribute("position", new THREE.BufferAttribute(moteP, 3));
+scene.add(new THREE.Points(moteGeo, new THREE.PointsMaterial({ color: 0x9fb3c8, size: 0.14, sizeAttenuation: true, transparent: true, opacity: 0.55, depthWrite: false })));
+
+/* ---------- the walker ---------- */
+const WSPEED = 2.0, WZ0 = -1380, WY = 1250;
+let vigKick = 0, breathT = 0, stingDone = false;
+let WZ = WZ0, notice = 0, pulseT = 0, noticeSaid = false, passedSaid = false;
+const walker = new THREE.Group(); scene.add(walker);
+const bodyDisp = (x, y, z) => {
+  const n = 1 + 0.035 * Math.sin(x * 6 + z * 4) + 0.03 * Math.sin(y * 8 + z * 3 + 1) + 0.02 * Math.sin(x * 13 + y * 11);
+  return [x * 350 * n, y * 330 * n, z * 600 * n];
+};
+const bodyGeo = new THREE.IcosahedronGeometry(1, 14);
+{
+  const p = bodyGeo.attributes.position;
+  for (let i = 0; i < p.count; i++) { const q = bodyDisp(p.getX(i), p.getY(i), p.getZ(i)); p.setXYZ(i, q[0], q[1], q[2]); }
+  bodyGeo.computeVertexNormals();
+}
+const bodyMat = new THREE.MeshLambertMaterial({ color: 0x3c4a5c });
+walker.add(new THREE.Mesh(bodyGeo, bodyMat));
+const ringMat = new THREE.MeshLambertMaterial({ color: 0x56677c });
+for (let i = 0; i < 22; i++) {
+  const z = -520 + i * 50, t = z / 600, s = Math.sqrt(1 - t * t);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(1, 0.03, 6, 28), ringMat);
+  ring.scale.set(352 * s, 332 * s, 350); ring.position.z = z; walker.add(ring);
+}
+const spotPos = [];
+for (let i = 0; i < 520; i++) {
+  const v = new THREE.Vector3(rand() * 2 - 1, -(0.15 + rand() * 0.85), rand() * 2 - 1).normalize();
+  const q = bodyDisp(v.x, v.y, v.z); spotPos.push(q[0] * 1.012, q[1] * 1.012, q[2] * 1.012);
+}
+const spotGeo = new THREE.BufferGeometry(); spotGeo.setAttribute("position", new THREE.Float32BufferAttribute(spotPos, 3));
+const spotMat = new THREE.PointsMaterial({ color: 0x3fd9c6, size: 5, sizeAttenuation: true, transparent: true, opacity: 0.7, depthWrite: false });
+walker.add(new THREE.Points(spotGeo, spotMat));
+
+const head = new THREE.Group(); head.position.set(0, -110, 700); walker.add(head);
+const headMesh = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 18), bodyMat); headMesh.scale.set(210, 190, 300); head.add(headMesh);
+const eyeMat = new THREE.MeshBasicMaterial({ color: 0xe8a33a });
+const eyeMeshes = [];
+[[0.55, -0.1, 0.78], [-0.55, -0.1, 0.78], [0.25, -0.35, 0.9], [-0.25, -0.35, 0.9], [0.8, 0.05, 0.55], [-0.8, 0.05, 0.55], [0.7, 0.3, 0.6], [-0.7, 0.3, 0.6]].forEach(d => {
+  const e = new THREE.Mesh(new THREE.SphereGeometry(15, 8, 6), eyeMat);
+  const v = new THREE.Vector3(...d).normalize(); e.position.set(v.x * 210, v.y * 190, v.z * 300); head.add(e); eyeMeshes.push(e);
+});
+
+const eyeLight = new THREE.PointLight(0xffb458, 0, 900, 1.2); scene.add(eyeLight);
+const cylG = new THREE.CylinderGeometry(1, 1, 1, 10), sphG = new THREE.SphereGeometry(1, 12, 10);
+const legMat = new THREE.MeshLambertMaterial({ color: 0x38465a });
+const legs = [], ZL = [-450, -150, 150, 450];
+const DZ = { "-1": [270, 100, 200, 30], "1": [150, 240, 60, 180] };
+[-1, 1].forEach(side => ZL.forEach((zl, k) => {
+  const L = {
+    side, zl, k,
+    up: new THREE.Mesh(cylG, legMat), lo: new THREE.Mesh(cylG, legMat),
+    knee: new THREE.Mesh(sphG, legMat), pad: new THREE.Mesh(sphG, legMat),
+    foot: new THREE.Vector3(side * [400, 95, 260, 110][k], FLOOR_Y, WZ0 + zl - DZ[side][k]),
+    swing: false, t0: 0, dur: 9, fromZ: 0, toZ: 0
+  };
+  scene.add(L.up, L.lo, L.knee, L.pad);
+  legs.push(L);
+}));
+const Y = new THREE.Vector3(0, 1, 0), tmpA = new THREE.Vector3(), tmpD = new THREE.Vector3();
+function seg(m, a, b, r) {
+  tmpD.subVectors(b, a); const len = tmpD.length();
+  m.position.addVectors(a, b).multiplyScalar(0.5);
+  m.scale.set(r, len, r); m.quaternion.setFromUnitVectors(Y, tmpD.normalize());
+}
+const hipV = new THREE.Vector3(), kneeV = new THREE.Vector3();
+function updateLegs(T) {
+  const wz = WZ;
+  walker.position.set(0, WY, wz);
+  walker.rotation.z = Math.sin(T * 0.07) * 0.004;
+  head.position.y = -110 - 650 * notice; head.scale.setScalar(1 + 0.4 * notice); head.rotation.y = Math.sin(T * 0.045) * 0.2 * (1 - notice); head.rotation.x = Math.sin(T * 0.031) * 0.05 + 0.45 * notice;
+  const swinging = legs.filter(l => l.swing).length;
+  legs.forEach(L => {
+    const s = Math.sqrt(1 - (L.zl / 600) ** 2);
+    hipV.set(L.side * 300 * s, WY - 120 * s, wz + L.zl);
+    if (L.swing) {
+      const u = Math.min(1, (T - L.t0) / L.dur), e = u * u * (3 - 2 * u);
+      L.foot.z = L.fromZ + (L.toZ - L.fromZ) * e;
+      L.foot.y = FLOOR_Y + 300 * Math.pow(Math.sin(Math.PI * u), 1.5);
+      if (u >= 1) { L.swing = false; L.foot.y = FLOOR_Y; footfall(L.foot); }
+    } else if (hipV.z - L.foot.z > 300 && swinging < 3) {
+      const nb = legs.find(o => o.side === L.side && Math.abs(o.k - L.k) === 1 && o.swing);
+      if (!nb) { L.swing = true; L.t0 = T; L.fromZ = L.foot.z; L.toZ = hipV.z + 300; }
+    }
+    const len = hipV.distanceTo(L.foot);
+    kneeV.addVectors(hipV, L.foot).multiplyScalar(0.5);
+    kneeV.x += L.side * 0.2 * len; kneeV.y += 0.08 * len;
+    seg(L.up, hipV, kneeV, 46); seg(L.lo, kneeV, L.foot, 28);
+    L.knee.position.copy(kneeV); L.knee.scale.setScalar(55);
+    L.pad.position.copy(L.foot); L.pad.position.y += 6; L.pad.scale.set(62, 24, 62);
+  });
+}
+
+/* ---------- the eye below ---------- */
+const EYE_Y = -1350;
+const eyeG = new THREE.Group(); eyeG.rotation.x = -Math.PI / 2; eyeG.position.set(0, EYE_Y, END_Z - 30); eyeG.visible = false; scene.add(eyeG);
+const eMats = [];
+function eMat(c) { const m = new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0, fog: false }); eMats.push(m); return m; }
+const lid = new THREE.Mesh(new THREE.RingGeometry(470, 1000, 56), eMat(0x0b0e12)); eyeG.add(lid);
+const eyeInner = new THREE.Group(); eyeG.add(eyeInner);
+const sclera = new THREE.Mesh(new THREE.CircleGeometry(470, 56), eMat(0x4a3220)); sclera.position.z = 8; eyeInner.add(sclera);
+const pupilG = new THREE.Group(); pupilG.position.z = 16; eyeInner.add(pupilG);
+const iris = new THREE.Mesh(new THREE.CircleGeometry(330, 56), eMat(0xd9892b)); pupilG.add(iris);
+const irisIn = new THREE.Mesh(new THREE.CircleGeometry(190, 56), eMat(0xf0b25a)); irisIn.position.z = 4; pupilG.add(irisIn);
+const pupil = new THREE.Mesh(new THREE.CircleGeometry(150, 40), eMat(0x050302)); pupil.position.z = 8; pupil.scale.set(0.28, 1, 1); pupilG.add(pupil);
+
+/* ---------- audio ---------- */
+let AC = null, master, rev, rumbleG, noiseB;
+function noiseBuf(sec, brown) {
+  const n = Math.floor(AC.sampleRate * sec), b = AC.createBuffer(1, n, AC.sampleRate), d = b.getChannelData(0); let l = 0;
+  for (let i = 0; i < n; i++) { const w = Math.random() * 2 - 1; if (brown) { l = (l + 0.02 * w) / 1.02; d[i] = l * 3.5; } else d[i] = w; }
+  return b;
+}
+function loopNoise(buf, type, freq, q, gain) {
+  const s = AC.createBufferSource(); s.buffer = buf; s.loop = true;
+  const f = AC.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = q;
+  const g = AC.createGain(); g.gain.value = gain; s.connect(f); f.connect(g); g.connect(master); s.start(); return g;
+}
+function out(node, wet) {
+  node.connect(master);
+  if (wet) { const g = AC.createGain(); g.gain.value = wet; node.connect(g); g.connect(rev); }
+}
+function initAudio() {
+  try {
+    AC = new (window.AudioContext || window.webkitAudioContext)();
+    master = AC.createGain(); master.gain.value = 0; master.connect(AC.destination);
+    master.gain.linearRampToValueAtTime(0.9, AC.currentTime + 5);
+    const len = AC.sampleRate * 5, ir = AC.createBuffer(2, len, AC.sampleRate);
+    for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.6); }
+    rev = AC.createConvolver(); rev.buffer = ir;
+    const rg = AC.createGain(); rg.gain.value = 0.7; rev.connect(rg); rg.connect(master);
+    [36, 36.7, 54.3].forEach((f, i) => {
+      const o = AC.createOscillator(); o.type = i === 2 ? "triangle" : "sine"; o.frequency.value = f;
+      const g = AC.createGain(); g.gain.value = i === 2 ? 0.05 : 0.12; o.connect(g); g.connect(master); o.start();
+    });
+    noiseB = noiseBuf(3, false);
+    const wind = loopNoise(noiseBuf(6, true), "bandpass", 320, 0.6, 0.08);
+    const lfo = AC.createOscillator(); lfo.frequency.value = 0.07; const lg = AC.createGain(); lg.gain.value = 0.05; lfo.connect(lg); lg.connect(wind.gain); lfo.start();
+    rumbleG = loopNoise(noiseBuf(6, true), "lowpass", 90, 0.7, 0.0);
+  } catch (e) { AC = null; }
+}
+function burst(dur, freq, gain, wet, type) {
+  if (!AC) return;
+  const s = AC.createBufferSource(); s.buffer = noiseB;
+  const f = AC.createBiquadFilter(); f.type = type || "lowpass"; f.frequency.value = freq;
+  const g = AC.createGain(), t = AC.currentTime;
+  g.gain.setValueAtTime(gain, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  s.connect(f); f.connect(g); out(g, wet); s.start(t, Math.random() * 1.5, dur + 0.1);
+}
+function stepSound() { burst(0.13, 700, 0.22, 0.5); }
+function thump(a) {
+  if (!AC || a < 0.02) return;
+  const t = AC.currentTime, o = AC.createOscillator(); o.type = "sine";
+  o.frequency.setValueAtTime(62, t); o.frequency.exponentialRampToValueAtTime(22, t + 2.5);
+  const g = AC.createGain(); g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.9 * a + 0.001, t + 0.06); g.gain.exponentialRampToValueAtTime(0.0001, t + 4);
+  o.connect(g); out(g, 0.9); o.start(t); o.stop(t + 4.2);
+  burst(1.6, 150, 0.5 * a, 1.0);
+}
+function pulse(a) {
+  if (!AC) return;
+  const t = AC.currentTime, o = AC.createOscillator(); o.type = "sine";
+  o.frequency.setValueAtTime(58, t); o.frequency.exponentialRampToValueAtTime(34, t + 0.3);
+  const g = AC.createGain(); g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(a * 0.8, t + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
+  o.connect(g); out(g, 0.4); o.start(t); o.stop(t + 0.5);
+}
+function breath(a) {
+  if (!AC) return;
+  const t = AC.currentTime, s = AC.createBufferSource(); s.buffer = noiseB;
+  const f = AC.createBiquadFilter(); f.type = "bandpass"; f.frequency.value = 380; f.Q.value = 0.8;
+  const g = AC.createGain(); g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(a * 0.55, t + 1.6); g.gain.linearRampToValueAtTime(0.0001, t + 4.2);
+  s.connect(f); f.connect(g); out(g, 0.6); s.start(t, Math.random(), 4.5);
+}
+function groan(a, dur) {
+  if (!AC) return;
+  const t = AC.currentTime, o = AC.createOscillator(); o.type = "sawtooth";
+  o.frequency.setValueAtTime(30, t); o.frequency.linearRampToValueAtTime(23, t + dur);
+  const f = AC.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = 130;
+  const g = AC.createGain(); g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(a, t + dur * 0.4); g.gain.linearRampToValueAtTime(0.0001, t + dur);
+  o.connect(f); f.connect(g); out(g, 0.8); o.start(t); o.stop(t + dur + 0.2);
+}
+
+/* ---------- state ---------- */
+const player = { x: 0, z: 14 };
+let yaw = 0, pitch = 0, maxPitch = 0, T = 0, started = false, speedNow = 0, stepPhase = 0, lastSin = 0;
+let shake = 0, endT = -1, finished = false;
+const pending = [];
+const fired = {};
+
+function footfall(p) {
+  const dist = Math.hypot(p.x - player.x, p.y - 0, p.z - player.z);
+  const a = Math.max(0, 1 - dist / 2600);
+  pending.push({ at: T + dist / 260, a });
+}
+
+/* ---------- captions ---------- */
+let capTimer = 0;
+function say(t, dur) {
+  const c = $("cap"); c.textContent = t; c.classList.add("on");
+  clearTimeout(capTimer); capTimer = setTimeout(() => c.classList.remove("on"), (dur || 5.5) * 1000);
+}
+const script = [
+  { d: 8, t: "Keep walking." },
+  { d: 90, t: "Look up.", cond: () => maxPitch < 0.7 },
+  { d: 180, t: "The bridge is eleven hundred meters long." },
+  { d: 310, t: "Not every pillar is holding something up." },
+  { d: 600, t: "Its footsteps reach you late." },
+  { d: 780, t: "You were never part of the plan." },
+  { d: 940, t: "The bridge ends soon." }
+];
+
+/* ---------- input ---------- */
+const keys = {};
+let jx = 0, jy = 0, joyId = null, jox = 0, joy0 = 0, lookId = null, lx = 0, ly = 0, dragging = false;
+addEventListener("keydown", e => { keys[e.code] = true; });
+addEventListener("keyup", e => { keys[e.code] = false; });
+function look(dx, dy, s) { yaw -= dx * s; pitch = Math.max(-1.5, Math.min(1.5, pitch - dy * s)); }
+const cv = renderer.domElement, joyEl = $("joy"), knob = $("knob");
+cv.addEventListener("mousedown", e => { dragging = true; lx = e.clientX; ly = e.clientY; });
+addEventListener("mouseup", () => { dragging = false; });
+addEventListener("mousemove", e => { if (dragging) { look(e.clientX - lx, e.clientY - ly, 0.0035); lx = e.clientX; ly = e.clientY; } });
+cv.addEventListener("touchstart", e => {
+  e.preventDefault();
+  for (const t of e.changedTouches) {
+    if (t.clientX < innerWidth * 0.5 && joyId === null) {
+      joyId = t.identifier; jox = t.clientX; joy0 = t.clientY;
+      joyEl.style.display = "block"; joyEl.style.left = jox + "px"; joyEl.style.top = joy0 + "px"; knob.style.transform = "";
+    } else if (lookId === null) { lookId = t.identifier; lx = t.clientX; ly = t.clientY; }
+  }
+}, { passive: false });
+cv.addEventListener("touchmove", e => {
+  e.preventDefault();
+  for (const t of e.changedTouches) {
+    if (t.identifier === joyId) {
+      let dx = t.clientX - jox, dy = t.clientY - joy0; const m = Math.hypot(dx, dy), R = 55;
+      if (m > R) { dx = dx / m * R; dy = dy / m * R; }
+      jx = dx / R; jy = -dy / R; knob.style.transform = `translate(${dx}px,${dy}px)`;
+    } else if (t.identifier === lookId) { look(t.clientX - lx, t.clientY - ly, 0.0052); lx = t.clientX; ly = t.clientY; }
+  }
+}, { passive: false });
+function endTouch(e) {
+  for (const t of e.changedTouches) {
+    if (t.identifier === joyId) { joyId = null; jx = jy = 0; joyEl.style.display = "none"; }
+    if (t.identifier === lookId) lookId = null;
+  }
+}
+cv.addEventListener("touchend", endTouch); cv.addEventListener("touchcancel", endTouch);
+
+/* ---------- main loop ---------- */
+const clock = new THREE.Clock();
+const ss = x => x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x);
+const hud = $("hud");
+
+function frame() {
+  requestAnimationFrame(frame);
+  const dt = Math.min(0.05, clock.getDelta());
+  if (started) { T += dt; update(dt); }
+  else { updateLegs(0); }
+  renderer.render(scene, camera);
+}
+
+function update(dt) {
+  /* movement */
+  let fwd = jy, str = jx;
+  if (keys.KeyW || keys.ArrowUp) fwd += 1; if (keys.KeyS || keys.ArrowDown) fwd -= 1;
+  if (keys.KeyD || keys.ArrowRight) str += 1; if (keys.KeyA || keys.ArrowLeft) str -= 1;
+  const m = Math.hypot(fwd, str); if (m > 1) { fwd /= m; str /= m; }
+  const target = Math.min(1, m) * 2.4;
+  speedNow += (target - speedNow) * Math.min(1, dt * 4);
+  const sy = Math.sin(yaw), cy = Math.cos(yaw);
+  const dirx = -sy * fwd + cy * str, dirz = -cy * fwd - sy * str;
+  const dl = Math.hypot(dirx, dirz) || 1;
+  let nx = player.x + (dirx / dl) * speedNow * dt * (m > 0.01 ? 1 : 0);
+  let nz = player.z + (dirz / dl) * speedNow * dt * (m > 0.01 ? 1 : 0);
+  if (nz < START_Z && nz > END_Z) {
+    if ((player.z >= START_Z || player.z <= END_Z) && Math.abs(nx) > 1.7) nz = player.z;
+    nx = Math.max(-1.7, Math.min(1.7, nx));
+  } else if (nz >= START_Z) { nx = Math.max(-4.7, Math.min(4.7, nx)); nz = Math.min(24.5, nz); }
+  else { nx = Math.max(-8.7, Math.min(8.7, nx)); nz = Math.max(END_Z - 59.5, nz); }
+  player.x = nx; player.z = nz;
+
+  /* footsteps and bob */
+  stepPhase += speedNow * dt * 2.2;
+  const sv = Math.sin(stepPhase);
+  if (speedNow > 0.4 && lastSin * sv < 0 && sv < 0) stepSound();
+  if (speedNow > 0.4 && lastSin * sv < 0 && sv > 0) stepSound();
+  lastSin = sv;
+  const bob = Math.abs(Math.sin(stepPhase)) * 0.045 * Math.min(1, speedNow / 2);
+
+  /* world */
+  const hd = (WZ + 700) - player.z;
+  const tgt = (T > 10 && hd > -40 && hd < 260) ? ss((260 - hd) / 200) : 0;
+  notice += (tgt - notice) * Math.min(1, dt * (tgt > notice ? 0.6 : 1.5));
+  WZ += WSPEED * (1 - 0.96 * notice) * dt;
+  if (notice > 0.35 && !noticeSaid) { noticeSaid = true; groan(0.9, 10); say("It has stopped walking.", 6); }
+  if (noticeSaid && !passedSaid && hd < -60) { passedSaid = true; say("Keep walking. Do not turn around.", 7); }
+  pulseT -= dt;
+  if (notice > 0.15 && pulseT <= 0) { pulseT = 1.5 - notice * 0.8; pulse(0.25 + 0.5 * notice); vigKick = 1; }
+  eyeMeshes.forEach(e => e.scale.setScalar(1 + 1.8 * notice));
+  eyeMat.color.setHex(0xe8a33a).lerp(new THREE.Color(0xffe08a), notice);
+  shake = Math.max(shake, notice * 0.3);
+  updateLegs(T);
+  eyeLight.position.set(0, WY + head.position.y - 80, WZ + 950);
+  eyeLight.intensity = notice * notice * 9 * (0.85 + 0.15 * Math.sin(T * 9));
+  lamp.intensity = 3.2 * (1 - notice * 0.6) * ((notice > 0.5 && Math.random() < 0.08) ? 0.15 : 1);
+  vigKick *= Math.exp(-dt * 3);
+  $("vig").style.opacity = Math.min(1, notice * 0.7 + vigKick * 0.35 * notice);
+  camera.fov = 72 - 9 * notice; camera.updateProjectionMatrix();
+  breathT -= dt;
+  if (notice > 0.3 && breathT <= 0) { breathT = 7; breath(notice); shake = Math.max(shake, 0.35); }
+  if (passedSaid && !stingDone && hd < -380) { stingDone = true; groan(1.0, 7); shake = 1.2; say("It was only breathing.", 6); }
+  for (let i = pending.length - 1; i >= 0; i--) {
+    if (T >= pending[i].at) { shake = Math.min(1.2, shake + pending[i].a * 1.6); thump(pending[i].a); pending.splice(i, 1); }
+  }
+  shake *= Math.exp(-dt * 0.7);
+  const dz = Math.abs(walker.position.z - player.z);
+  const prox = Math.max(0, Math.min(1, 1 - dz / 1500));
+  if (AC && rumbleG) rumbleG.gain.value += (0.04 + 0.55 * prox * prox - rumbleG.gain.value) * Math.min(1, dt);
+  spotMat.opacity = 0.55 + 0.25 * Math.sin(T * 0.6);
+  warnMats[0].opacity = 0.35 + 0.65 * (Math.sin(T * 2.1) > 0.2 ? 1 : 0);
+  warnMats[1].opacity = 0.35 + 0.65 * (Math.sin(T * 2.1 + 3.14) > 0.2 ? 1 : 0);
+
+  /* motes drift and wrap around the player */
+  const mp = moteGeo.attributes.position;
+  for (let i = 0; i < NM; i++) {
+    let x = mp.getX(i), y = mp.getY(i), z = mp.getZ(i);
+    x += Math.sin(T * 0.3 + i) * dt * 0.1; y -= dt * 0.08;
+    if (x - player.x > 30) x -= 60; if (x - player.x < -30) x += 60;
+    if (z - player.z > 30) z -= 60; if (z - player.z < -30) z += 60;
+    if (y < -5) y += 30;
+    mp.setXYZ(i, x, y, z);
+  }
+  mp.needsUpdate = true;
+
+  /* camera */
+  const sh = shake * 0.06;
+  camera.position.set(
+    player.x + Math.sin(T * 47) * sh, 1.7 - bob + Math.sin(T * 39) * sh * 0.8, player.z + Math.sin(T * 31) * sh * 0.5);
+  camera.rotation.set(pitch + Math.sin(T * 23) * sh * 0.02, yaw, Math.sin(T * 17) * sh * 0.015);
+  lamp.position.set(player.x, 2.2, player.z);
+  maxPitch = Math.max(maxPitch, pitch);
+
+  /* narrative */
+  const d = Math.max(0, -player.z);
+  for (let i = 0; i < script.length; i++) {
+    const s = script[i];
+    if (!fired[i] && d >= s.d) { fired[i] = true; if (!s.cond || s.cond()) say(s.t); }
+  }
+  hud.textContent = Math.round(d) + " m of " + BRIDGE_LEN;
+
+  /* ending */
+  if (endT < 0 && d >= BRIDGE_LEN + 2) { endT = 0; eyeG.visible = true; }
+  if (endT >= 0) runEnding(dt);
+}
+
+let endSaid = [false, false, false, false];
+function runEnding(dt) {
+  endT += dt;
+  floorMat.opacity = 1 - ss(endT / 9);
+  const fade = ss((endT - 5) / 5), open = ss((endT - 9) / 8);
+  const close = 1 - ss((endT - 38) / 9);
+  eMats.forEach(m => m.opacity = fade * (endT > 38 ? close : 1));
+  eyeInner.scale.y = Math.max(0.015, open * (endT > 38 ? close : 1));
+  /* the pupil looks up at you, then past you at the other one */
+  const toward = 1 - ss((endT - 26) / 6);
+  const px = (player.x - eyeG.position.x) * 8 * toward + (-1 * (1 - toward)) * 120;
+  const pz = (player.z - eyeG.position.z) * 8 * toward + (1 - toward) * 120;
+  pupilG.position.x += (Math.max(-130, Math.min(130, px)) - pupilG.position.x) * Math.min(1, dt);
+  pupilG.position.y += (Math.max(-130, Math.min(130, -pz)) - pupilG.position.y) * Math.min(1, dt);
+  pupil.scale.x = 0.28 + 0.5 * ss((endT - 14) / 4) * (1 - ss((endT - 22) / 4));
+  if (endT > 8 && !endSaid[0]) { endSaid[0] = true; groan(0.8, 12); }
+  if (endT > 17 && !endSaid[1]) { endSaid[1] = true; say("You are very small.", 6); }
+  if (endT > 24 && !endSaid[2]) { endSaid[2] = true; say("That is not a threat. It is just true.", 6.5); }
+  if (endT > 33 && !endSaid[3]) { endSaid[3] = true; say("It looked past you. It always was going to.", 7); }
+  if (endT > 46 && !finished) {
+    finished = true; $("black").style.transitionDuration = "6s"; $("black").style.opacity = 1;
+    setTimeout(() => { const e = $("end"); e.style.display = "flex"; requestAnimationFrame(() => e.style.opacity = 1); }, 6000);
+  }
+}
+
+/* ---------- start / restart ---------- */
+$("go").addEventListener("click", () => {
+  initAudio(); if (AC && AC.state === "suspended") AC.resume();
+  $("start").style.display = "none";
+  started = true; clock.getDelta();
+  $("black").style.opacity = 0; hud.classList.add("on");
+});
+$("again").addEventListener("click", () => location.reload());
+addEventListener("resize", () => {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight);
+});
+/* title screen shows the world behind it, dimly */
+$("black").style.opacity = 1;
+camera.position.set(0, 1.7, 14); camera.rotation.set(0.12, 0, 0);
+frame();
+})();
+</script>
+</body>
+</html>
