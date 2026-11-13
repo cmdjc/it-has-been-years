@@ -47,3 +47,29 @@ export function decodePng(buffer) {
   }
   return { width, height, channels, pixels };
 }
+
+const luma = ({ pixels, channels }, i) => {
+  const o = i * channels;
+  return (pixels[o] + pixels[o + 1] + pixels[o + 2]) / 3;
+};
+
+export function stddev(png) {
+  const count = png.width * png.height;
+  const values = Array.from({ length: count }, (_, i) => luma(png, i));
+  const mean = values.reduce((sum, value) => sum + value, 0) / count;
+  return Math.sqrt(values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / count);
+}
+
+export function meanGrid({ width, height, channels, pixels }, n) {
+  const cells = Array.from({ length: n * n }, () => [0, 0, 0, 0]);
+  for (let y = 0; y < height; y++) {
+    const row = Math.min(n - 1, Math.floor((y * n) / height)) * n;
+    for (let x = 0; x < width; x++) {
+      const cell = cells[row + Math.min(n - 1, Math.floor((x * n) / width))];
+      const o = (y * width + x) * channels;
+      for (let c = 0; c < 3; c++) cell[c] += pixels[o + c];
+      cell[3]++;
+    }
+  }
+  return cells.map(([r, g, b, count]) => [r / count, g / count, b / count]);
+}

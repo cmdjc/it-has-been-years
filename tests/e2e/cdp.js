@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
@@ -29,7 +29,7 @@ async function openSocket(url) {
   return socket;
 }
 
-async function createPage(port, url, { width = 1280, height = 720 }) {
+async function createPage(port, url, { width = 1280, height = 720, before } = {}) {
   const target = await fetchJson(`http://localhost:${port}/json/new?about:blank`, { method: "PUT" });
   const socket = await openSocket(target.webSocketDebuggerUrl);
   const pending = new Map();
@@ -102,6 +102,28 @@ async function createPage(port, url, { width = 1280, height = 720 }) {
     await send("Input.dispatchMouseEvent", { type: "mouseReleased", ...mouse });
   };
 
+  const serveFile = async (urlPattern, filePath, contentType) => {
+    const body = readFileSync(filePath).toString("base64");
+    on("Fetch.requestPaused", ({ requestId }) => {
+      send("Fetch.fulfillRequest", {
+        requestId,
+        responseCode: 200,
+        responseHeaders: [{ name: "Content-Type", value: contentType }],
+        body,
+      }).catch((error) => errors.push(`serveFile: ${error.message}`));
+    });
+    await send("Fetch.enable", { patterns: [{ urlPattern, requestStage: "Request" }] });
+  };
+
+  const touch = (type, points) =>
+    send("Input.dispatchTouchEvent", {
+      type,
+      touchPoints: points.map(({ x, y, id = 0 }) => ({ x, y, id })),
+    });
+
+  const key = (type, code, keyName, windowsVirtualKeyCode) =>
+    send("Input.dispatchKeyEvent", { type, code, key: keyName, windowsVirtualKeyCode });
+
   const screenshot = async (file) => {
     const { data } = await send("Page.captureScreenshot", { format: "png" });
     mkdirSync(dirname(file), { recursive: true });
@@ -118,6 +140,9 @@ async function createPage(port, url, { width = 1280, height = 720 }) {
   await send("Page.enable");
   await send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile: false });
 
+  const page = { errors, send, on, evaluate, waitFor, click, screenshot, serveFile, touch, key, close };
+  if (before) await before(page);
+
   const loaded = new Promise((done, fail) => {
     const timer = setTimeout(() => fail(new Error(`load timed out: ${url}`)), LOAD_TIMEOUT_MS);
     on("Page.loadEventFired", () => {
@@ -128,7 +153,7 @@ async function createPage(port, url, { width = 1280, height = 720 }) {
   await send("Page.navigate", { url });
   await loaded;
 
-  return { errors, send, on, evaluate, waitFor, click, screenshot, close };
+  return page;
 }
 
 export async function connectBrowser(port = 9222) {
@@ -160,7 +185,7 @@ export async function connectBrowser(port = 9222) {
   }
 
   return {
-    openPage: (url, size = {}) => createPage(port, url, size),
+    openPage: (url, opts = {}) => createPage(port, url, opts),
     close: async () => {
       child?.kill();
     },

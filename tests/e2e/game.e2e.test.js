@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { connectBrowser } from "./cdp.js";
-import { decodePng } from "./png.js";
+import { decodePng, stddev } from "./png.js";
 import { startServer } from "./server.js";
 
 const OUT = "tests/e2e/out";
@@ -21,16 +21,6 @@ afterAll(async () => {
   await server?.close();
 });
 
-const standardDeviation = ({ width, height, channels, pixels }) => {
-  const values = [];
-  for (let i = 0; i < width * height; i++) {
-    const o = i * channels;
-    values.push((pixels[o] + pixels[o + 1] + pixels[o + 2]) / 3);
-  }
-  const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
-  return Math.sqrt(values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / values.length);
-};
-
 const withPage = async (query, run) => {
   const page = await browser.openPage(`${server.url}/${query}`);
   try {
@@ -44,7 +34,7 @@ const withPage = async (query, run) => {
 const shotDeviation = async (page, name) => {
   const file = `${OUT}/${name}.png`;
   await page.screenshot(file);
-  return standardDeviation(decodePng(readFileSync(file)));
+  return stddev(decodePng(readFileSync(file)));
 };
 
 describe("begin", () => {

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { connectBrowser } from "./cdp.js";
-import { decodePng } from "./png.js";
+import { decodePng, stddev } from "./png.js";
 import { startServer } from "./server.js";
 
 const SCREENSHOT = "tests/e2e/out/world-title.png";
@@ -30,16 +30,6 @@ const meanColor = ({ width, channels, pixels }, x0, y0, size) => {
   return sum.map((total) => total / (size * size));
 };
 
-const standardDeviation = ({ width, height, channels, pixels }) => {
-  const values = [];
-  for (let i = 0; i < width * height; i++) {
-    const o = i * channels;
-    values.push((pixels[o] + pixels[o + 1] + pixels[o + 2]) / 3);
-  }
-  const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
-  return Math.sqrt(values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / values.length);
-};
-
 describe("title world render", () => {
   it("draws a sky and a non-blank scene behind the title", async () => {
     const page = await browser.openPage(`${server.url}/`);
@@ -51,7 +41,7 @@ describe("title world render", () => {
       const [red, green, blue] = meanColor(image, Math.floor((image.width - BLOCK) / 2), 0, BLOCK);
       expect(blue).toBeGreaterThan(red);
       expect((red + green + blue) / 3).toBeGreaterThan(120);
-      expect(standardDeviation(image)).toBeGreaterThan(10);
+      expect(stddev(image)).toBeGreaterThan(10);
       expect(page.errors).toEqual([]);
     } finally {
       await page.close();
