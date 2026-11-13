@@ -1,9 +1,28 @@
 {
-  "name": "fear-games",
+  "name": "it-has-been-years",
   "private": true,
-  "version": "0.1.0",
-  "description": "Browser-based fear-themed games (three.js r128). See HANDOFF.md.",
+  "version": "1.0.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22.12"
+  },
   "scripts": {
-    "serve": "npx --yes serve games -l 5173"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "lint": "eslint .",
+    "check": "npm run lint && npm run test && npm run build"
+  },
+  "dependencies": {
+    "three": "0.128.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "eslint": "10.13.0",
+    "globals": "17.13.0",
+    "jsdom": "30.1.3",
+    "vite": "8.3.5",
+    "vitest": "4.1.12"
   }
 }
