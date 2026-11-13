@@ -17,12 +17,14 @@ const touch = (target, type, points) => {
 describe("input", () => {
   let canvas;
   let input;
+  let looks;
   beforeEach(() => {
     document.body.innerHTML = bodyHtml;
     canvas = document.createElement("canvas");
     document.body.appendChild(canvas);
     window.innerWidth = 1000;
-    input = createInput(canvas, window);
+    looks = [];
+    input = createInput(canvas, window, (dYaw, dPitch) => looks.push([dYaw, dPitch]));
   });
   afterEach(() => input.dispose());
 
@@ -35,13 +37,23 @@ describe("input", () => {
     key("keydown", "KeyA");
     key("keyup", "ArrowRight");
     expect(input.axes()).toEqual({ fwd: -1, str: -1, run: false });
-    expect(input.keyAxes()).toEqual({ fwd: -1, str: -1 });
   });
 
   it("opposite keys cancel", () => {
     key("keydown", "KeyW");
     key("keydown", "KeyS");
     expect(input.axes().fwd).toBe(0);
+  });
+
+  it("treats alias keys as one key", () => {
+    key("keydown", "KeyW");
+    key("keydown", "ArrowUp");
+    expect(input.axes().fwd).toBe(1);
+    key("keydown", "KeyS");
+    expect(input.axes().fwd).toBe(0);
+    key("keydown", "KeyD");
+    key("keydown", "ArrowRight");
+    expect(input.axes().str).toBe(1);
   });
 
   it("reports shift as run", () => {
@@ -54,19 +66,30 @@ describe("input", () => {
     expect(input.axes().run).toBe(false);
   });
 
-  it("accumulates mouse drag look and resets", () => {
+  it("calls onLook per mouse move while dragging", () => {
     mouse(window, "mousemove", 5, 5);
-    expect(input.takeLook()).toEqual({ yaw: 0, pitch: 0 });
+    expect(looks).toEqual([]);
     mouse(canvas, "mousedown", 100, 100);
     mouse(window, "mousemove", 110, 120);
     mouse(window, "mousemove", 120, 120);
-    const look = input.takeLook();
-    expect(look.yaw).toBeCloseTo(-20 * 0.0035);
-    expect(look.pitch).toBeCloseTo(-20 * 0.0035);
-    expect(input.takeLook()).toEqual({ yaw: 0, pitch: 0 });
+    expect(looks).toHaveLength(2);
+    expect(looks[0][0]).toBeCloseTo(-10 * 0.0035);
+    expect(looks[0][1]).toBeCloseTo(-20 * 0.0035);
+    expect(looks[1][0]).toBeCloseTo(-10 * 0.0035);
+    expect(looks[1][1]).toBeCloseTo(0);
     mouse(window, "mouseup");
     mouse(window, "mousemove", 200, 200);
-    expect(input.takeLook()).toEqual({ yaw: 0, pitch: 0 });
+    expect(looks).toHaveLength(2);
+  });
+
+  it("clamps pitch after each event when feeding a clamping look", () => {
+    let pitch = 1.5;
+    input.dispose();
+    input = createInput(canvas, window, (_dYaw, dPitch) => { pitch = Math.max(-1.5, Math.min(1.5, pitch + dPitch)); });
+    mouse(canvas, "mousedown", 0, 500);
+    mouse(window, "mousemove", 0, 400);
+    mouse(window, "mousemove", 0, 500);
+    expect(pitch).toBeCloseTo(1.5 - 0.35, 9);
   });
 
   it("left-half touch drives the joystick with radius clamp", () => {
@@ -78,20 +101,17 @@ describe("input", () => {
     expect(joyEl.style.left).toBe("200px");
     expect(joyEl.style.top).toBe("300px");
     touch(canvas, "touchmove", [[1, 310, 300]]);
-    expect(input.joystick()).toEqual({ x: 1, y: -0 });
     expect(knob.style.transform).toBe("translate(55px,0px)");
     expect(input.axes()).toMatchObject({ fwd: 0, str: 1 });
     touch(canvas, "touchmove", [[1, 200, 245]]);
-    expect(input.joystick().y).toBeCloseTo(1);
   });
 
   it("right-half touch looks at 0.0052 per px", () => {
     touch(canvas, "touchstart", [[2, 700, 300]]);
     touch(canvas, "touchmove", [[2, 710, 320]]);
-    const look = input.takeLook();
-    expect(look.yaw).toBeCloseTo(-10 * 0.0052);
-    expect(look.pitch).toBeCloseTo(-20 * 0.0052);
-    expect(input.joystick()).toEqual({ x: 0, y: 0 });
+    expect(looks).toHaveLength(1);
+    expect(looks[0][0]).toBeCloseTo(-10 * 0.0052);
+    expect(looks[0][1]).toBeCloseTo(-20 * 0.0052);
   });
 
   it("handles two touches and releases by identifier", () => {
@@ -99,23 +119,20 @@ describe("input", () => {
     touch(canvas, "touchstart", [[1, 100, 300]]);
     touch(canvas, "touchstart", [[2, 700, 300]]);
     touch(canvas, "touchmove", [[1, 100, 250], [2, 705, 300]]);
-    expect(input.joystick().y).toBeCloseTo(50 / 55);
-    expect(input.takeLook().yaw).toBeCloseTo(-5 * 0.0052);
+    expect(looks[0][0]).toBeCloseTo(-5 * 0.0052);
     touch(canvas, "touchend", [[2, 705, 300]]);
     expect(joyEl.style.display).toBe("block");
-    expect(input.joystick().y).toBeCloseTo(50 / 55);
     touch(canvas, "touchmove", [[2, 800, 300]]);
-    expect(input.takeLook()).toEqual({ yaw: 0, pitch: 0 });
+    expect(looks).toHaveLength(1);
     touch(canvas, "touchcancel", [[1, 100, 250]]);
     expect(joyEl.style.display).toBe("none");
-    expect(input.joystick()).toEqual({ x: 0, y: 0 });
   });
 
   it("second left-half touch does not claim the joystick but claims look", () => {
     touch(canvas, "touchstart", [[1, 100, 300]]);
     touch(canvas, "touchstart", [[2, 200, 300]]);
     touch(canvas, "touchmove", [[2, 210, 300]]);
-    expect(input.takeLook().yaw).toBeCloseTo(-10 * 0.0052);
+    expect(looks[0][0]).toBeCloseTo(-10 * 0.0052);
   });
 
   it("prevents the context menu", () => {

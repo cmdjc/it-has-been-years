@@ -65,20 +65,16 @@ describe("createPath walk mode", () => {
   });
 
   it("draws arch length before height", () => {
-    const { path, specs } = makePath();
-    for (let i = 0; i < 300; i++) path.add();
-    const arch = specs.find((spec) => spec.type === "arch");
-    const replay = mulberry32(20240607);
-    const probe = createPath({ rng: replay, build: () => null, remove: () => {} });
-    for (let i = 0; i < 300; i++) {
-      probe.add();
-      const last = probe.state.segs[probe.state.segs.length - 1];
-      if (last.type === "arch") {
-        expect(last.L).toBe(arch.L);
-        expect(last.H).toBe(arch.H);
-        break;
-      }
-    }
+    const draws = [0, 0.25, 0.75];
+    const specs = [];
+    const path = createPath({ rng: () => draws.shift(), build: (spec) => { specs.push(spec); return null; }, remove: () => {} });
+    path.state.segCount = 14;
+    path.state.lastType = "walk";
+    path.add();
+    expect(draws).toEqual([]);
+    expect(specs[0].type).toBe("arch");
+    expect(specs[0].L).toBeCloseTo(56 + 0.25 * 30, 9);
+    expect(specs[0].H).toBeCloseTo(5 + 0.75 * 5, 9);
   });
 });
 

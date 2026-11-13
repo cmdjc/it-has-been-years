@@ -2,7 +2,7 @@ const MOUSE_LOOK = 0.0035;
 const TOUCH_LOOK = 0.0052;
 const JOY_RADIUS = 55;
 
-export function createInput(canvas, win) {
+export function createInput(canvas, win, onLook) {
   const doc = win.document;
   const joyEl = doc.getElementById("joy");
   const knob = doc.getElementById("knob");
@@ -16,14 +16,8 @@ export function createInput(canvas, win) {
   let lastX = 0;
   let lastY = 0;
   let dragging = false;
-  let lookYaw = 0;
-  let lookPitch = 0;
 
-  const addLook = (dx, dy, scale) => {
-    lookYaw -= dx * scale;
-    lookPitch -= dy * scale;
-  };
-  const held = (code) => (keys[code] ? 1 : 0);
+  const addLook = (dx, dy, scale) => onLook(-dx * scale, -dy * scale);
 
   const onKeyDown = (e) => { keys[e.code] = true; };
   const onKeyUp = (e) => { keys[e.code] = false; };
@@ -108,23 +102,11 @@ export function createInput(canvas, win) {
   winListeners.forEach(([type, fn]) => win.addEventListener(type, fn));
   canvasListeners.forEach(([type, fn, opts]) => canvas.addEventListener(type, fn, opts));
 
-  const keyAxes = () => ({
-    fwd: held("KeyW") + held("ArrowUp") - held("KeyS") - held("ArrowDown"),
-    str: held("KeyD") + held("ArrowRight") - held("KeyA") - held("ArrowLeft"),
-  });
-
   return {
     axes() {
-      const k = keyAxes();
-      return { fwd: jy + k.fwd, str: jx + k.str, run: Boolean(keys.ShiftLeft || keys.ShiftRight) };
-    },
-    joystick: () => ({ x: jx, y: jy }),
-    keyAxes,
-    takeLook() {
-      const look = { yaw: lookYaw, pitch: lookPitch };
-      lookYaw = 0;
-      lookPitch = 0;
-      return look;
+      const fwd = Number(keys.KeyW || keys.ArrowUp || 0) - Number(keys.KeyS || keys.ArrowDown || 0);
+      const str = Number(keys.KeyD || keys.ArrowRight || 0) - Number(keys.KeyA || keys.ArrowLeft || 0);
+      return { fwd: jy + fwd, str: jx + str, run: Boolean(keys.ShiftLeft || keys.ShiftRight) };
     },
     dispose() {
       winListeners.forEach(([type, fn]) => win.removeEventListener(type, fn));

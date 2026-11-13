@@ -39,7 +39,7 @@ function start(gl) {
   const overlay = createOverlay(document, scheduler);
   const engine = createAudio({ AudioContext: window.AudioContext || window.webkitAudioContext, rng: soundRng });
   const sfx = createSfx(engine, soundRng);
-  const input = createInput(gl.domElement, window);
+  const input = createInput(gl.domElement, window, (dYaw, dPitch) => game.look(dYaw, dPitch));
   const game = createGame({
     view, mats, kit, overlay, engine, sfx, scheduler,
     rng: { world: mulberry32(WORLD_SEED), jump: mulberry32(SEEDS.jump) },
@@ -94,8 +94,6 @@ function start(gl) {
         const pixelRatio = adapt(quality, raw);
         if (pixelRatio !== null) view.setPixelRatio(pixelRatio);
       }
-      const { yaw, pitch } = input.takeLook();
-      game.look(yaw, pitch);
       const total = Math.min(MAX_STEP, raw) * timescale;
       const steps = Math.max(1, Math.ceil(total / MAX_STEP - 1e-9));
       for (let i = 0; i < steps; i++) game.update(total / steps, axesOverride ?? input.axes());
