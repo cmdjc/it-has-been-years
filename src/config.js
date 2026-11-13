@@ -7,6 +7,7 @@ export const OCEAN_Y = -2.2;
 export const SUN_DIR = deepFreeze([0.35, 0.62, 0.7]);
 export const FOV = 70;
 export const WORLD_SEED = 20240607;
+export const SEEDS = deepFreeze({ jump: 1618033, paint: 3141592, sound: 2718281 });
 
 export const PATH = deepFreeze({
   CX: 30000,
