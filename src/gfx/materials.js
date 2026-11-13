@@ -61,7 +61,7 @@ export function createMaterials({ createCanvas, anisotropy, paint }) {
   const doorWarm = new THREE.MeshBasicMaterial({ color: 0xffe6b0 });
 
   return {
-    uniforms, tex, skyMat, water, poolWater, planetMat, tileW, tileA, lightMat, chromeMat,
+    paint, uniforms, tex, skyMat, water, poolWater, planetMat, tileW, tileA, lightMat, chromeMat,
     causticTex, causticMat, shadeMat, unitPlane, buoyGeo, buoyW, buoyA, stairMat, doorWarm,
   };
 }

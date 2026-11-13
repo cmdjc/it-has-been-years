@@ -32,7 +32,7 @@ export function buildTower(mats) {
     const f = new THREE.Mesh(new THREE.BoxGeometry(30000, 3.4e6, 70000), finMat);
     f.position.set(Math.sin(a) * R, OCEAN_Y + 1.7e6, TZ + Math.cos(a) * R); f.rotation.y = a; group.add(f);
   }
-  const fallTex = sized("fall", fallPainter(Math.random));
+  const fallTex = sized("fall", fallPainter(mats.paint));
   fallTex.wrapS = fallTex.wrapT = THREE.ClampToEdgeWrapping;
   const fallMat = new THREE.MeshBasicMaterial({ map: fallTex, transparent: true, opacity: 0.92 });
   const fallH = tiers[0][1];
