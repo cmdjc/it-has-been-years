@@ -5,7 +5,7 @@ import { createKit } from "../../../src/gfx/geometry.js";
 import { createMaterials } from "../../../src/gfx/materials.js";
 import { groundHeight } from "../../../src/game/ground.js";
 import { stubCanvas } from "../helpers/stubCanvas.js";
-import { createSegmentBuilder } from "../../../src/world/segments.js";
+import { createSegmentBuilder } from "../../../src/world/builder.js";
 import { decor, struct } from "../../../src/world/structures.js";
 
 const mats = createMaterials({ createCanvas: stubCanvas, anisotropy: 1, paint: mulberry32(1) });

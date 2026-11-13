@@ -1,6 +1,4 @@
 import * as THREE from "three";
-import { decor } from "./structures.js";
-import { buildLanding, buildRamp } from "./climb.js";
 
 export function deck(kit, g, z0, L) {
   const { slab, shade, mats } = kit;
@@ -107,28 +105,4 @@ export function buildGate(kit, g, z0, L) {
   slab(g, 28, 62, 5, -21, 19, zc, mats.tileW, 1.2); slab(g, 28, 62, 5, 21, 19, zc, mats.tileW, 1.2); slab(g, 14, 32, 5, 0, 34, zc, mats.tileW, 1.2);
   slab(g, 70, 1.6, 5.2, 0, 19, zc, mats.tileA, 1.2); slab(g, 70, 1.0, 5.2, 0, 44, zc, mats.tileA, 1.2);
   shade(g, 74, 12, 0, zc);
-}
-
-export function createSegmentBuilder(kit, rng) {
-  const walkBuilders = {
-    walk: (g, { z0, L }) => buildWalk(kit, g, z0, L),
-    arch: (g, { z0, L, H }) => buildArch(kit, g, z0, L, H),
-    stairs: (g, { z0 }) => buildStairs(kit, g, z0),
-    tunnel: (g, { z0, L }) => buildTunnel(kit, g, z0, L),
-    pool: (g, { z0, L }) => buildPool(kit, g, z0, L),
-    colonnade: (g, { z0, L }) => buildColonnade(kit, g, z0, L),
-    atrium: (g, { z0, L }) => buildAtrium(kit, g, z0, L),
-    gate: (g, { z0, L }) => buildGate(kit, g, z0, L),
-  };
-  return function build(spec) {
-    const g = new THREE.Group();
-    if (spec.mode === "climb") {
-      g.position.y = spec.y0;
-      if (spec.type === "ramp") buildRamp(kit, g, spec.z0, spec.L); else buildLanding(kit, g, spec.z0, spec.L);
-      return g;
-    }
-    walkBuilders[spec.type](g, spec);
-    if (spec.type !== "atrium") decor(kit, rng, g, spec.z0 - spec.L / 2, spec.L);
-    return g;
-  };
 }
