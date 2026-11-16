@@ -6,7 +6,9 @@ import { describe, expect, it } from "vitest";
 const read = (path) => readFileSync(resolve(process.cwd(), path), "utf8");
 const doc = new globalThis.DOMParser().parseFromString(read("index.html"), "text/html");
 
-const ids = ["joy", "knob", "bfx", "hint", "white", "yrs", "sub", "start", "go", "end", "endtxt", "again"];
+const ids = ["joy", "knob", "bfx", "hint", "white", "yrs", "sub", "start", "go", "end", "endtxt", "again",
+  "menu", "m-chapters", "m-credits", "m-debug", "p-chapters", "p-credits", "p-debug", "chapters",
+  "d-fly", "d-skip", "d-stats", "stats", "dbar", "b-skip", "b-up", "b-down"];
 
 describe("index.html shell", () => {
   it("has the title", () => {
@@ -18,9 +20,20 @@ describe("index.html shell", () => {
   });
 
   it("has the button and heading text", () => {
-    expect(doc.getElementById("go").textContent).toBe("BEGIN");
+    expect(doc.getElementById("go").textContent).toBe("NEW GAME");
     expect(doc.getElementById("again").textContent).toBe("WALK AGAIN");
     expect(doc.querySelector("#start h1").textContent).toBe("It has been years.");
+  });
+
+  it("hides the panels, the stats, and the debug bar by default", () => {
+    ["p-chapters", "p-credits", "p-debug", "stats", "dbar"].forEach((id) => {
+      expect(doc.getElementById(id).hasAttribute("hidden")).toBe(true);
+    });
+  });
+
+  it("has four speed buttons in the debug panel", () => {
+    const speeds = [...doc.querySelectorAll("#p-debug [data-speed]")].map((el) => el.dataset.speed);
+    expect(speeds).toEqual(["1", "4", "16", "64"]);
   });
 
   it("loads the module entry", () => {

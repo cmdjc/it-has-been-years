@@ -16,7 +16,7 @@ afterAll(async () => {
 });
 
 describe("title screen", () => {
-  it("shows the title, the heading, and the begin button without errors", async () => {
+  it("shows the title, the heading, and the menu without errors", async () => {
     const page = await browser.openPage(`${server.url}/`);
     try {
       expect(await page.evaluate("document.title")).toBe("It Has Been Years");
@@ -27,7 +27,9 @@ describe("title screen", () => {
         const style = getComputedStyle(el);
         return { text: el.textContent, visible: box.width > 0 && box.height > 0 && style.visibility !== "hidden" && style.display !== "none" };
       })()`);
-      expect(go).toEqual({ text: "BEGIN", visible: true });
+      expect(go).toEqual({ text: "NEW GAME", visible: true });
+      const menuIds = await page.evaluate(`["m-chapters", "m-credits", "m-debug"].map((id) => document.getElementById(id).textContent)`);
+      expect(menuIds).toEqual(["CHAPTERS", "CREDITS", "DEBUG"]);
       await page.screenshot("tests/e2e/out/title.png");
       expect(page.errors).toEqual([]);
     } finally {

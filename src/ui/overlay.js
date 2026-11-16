@@ -51,7 +51,6 @@ export function createOverlay(doc, scheduler) {
     beamGlow(opacity) {
       $("bfx").style.opacity = opacity;
     },
-    onBegin: (fn) => $("go").addEventListener("click", fn),
     onAgain: (fn) => $("again").addEventListener("click", fn),
   };
 }

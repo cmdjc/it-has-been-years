@@ -82,12 +82,10 @@ describe("overlay", () => {
     expect($("bfx").style.opacity).toBe("0.6");
   });
 
-  it("wires begin and again clicks", () => {
+  it("wires the again click", () => {
     const calls = [];
-    overlay.onBegin(() => calls.push("go"));
     overlay.onAgain(() => calls.push("again"));
-    $("go").click();
     $("again").click();
-    expect(calls).toEqual(["go", "again"]);
+    expect(calls).toEqual(["again"]);
   });
 });

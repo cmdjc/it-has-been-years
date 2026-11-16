@@ -12,10 +12,51 @@
 <div id="hint">Walk toward the tower.</div>
 <div id="white"><div id="yrs"></div><div id="sub"></div></div>
 
+<div id="stats" hidden></div>
+<div id="dbar" hidden>
+  <button id="b-skip">SKIP</button>
+  <button id="b-up">&#9650;</button>
+  <button id="b-down">&#9660;</button>
+</div>
+
 <div id="start">
   <h1>It has been years.</h1>
   <p class="how">Walk toward the tower.<br>Left thumb walks. Right thumb looks.<br>Keyboard: WASD, drag the mouse to look.<br>Headphones help.</p>
-  <button id="go">BEGIN</button>
+  <nav id="menu">
+    <button id="go">NEW GAME</button>
+    <button id="m-chapters">CHAPTERS</button>
+    <button id="m-credits">CREDITS</button>
+    <button id="m-debug">DEBUG</button>
+  </nav>
+  <section id="p-chapters" class="panel" hidden>
+    <h2>Chapters</h2>
+    <ol id="chapters"></ol>
+    <button class="back">BACK</button>
+  </section>
+  <section id="p-credits" class="panel" hidden>
+    <h2>It Has Been Years</h2>
+    <p>Made by M K and Claude.</p>
+    <p>Claude is an AI model by Anthropic.</p>
+    <p>Everything you see and hear is drawn and played by code.</p>
+    <button class="back">BACK</button>
+  </section>
+  <section id="p-debug" class="panel" hidden>
+    <h2>Debug</h2>
+    <p class="label">Walk speed</p>
+    <div class="speeds">
+      <button data-speed="1">1x</button>
+      <button data-speed="4">4x</button>
+      <button data-speed="16">16x</button>
+      <button data-speed="64">64x</button>
+    </div>
+    <div class="toggles">
+      <button id="d-fly">Fly</button>
+      <button id="d-skip">Skip key</button>
+      <button id="d-stats">Stats</button>
+    </div>
+    <p class="help">Fly: Space or E rises, C or Q sinks. Skip key: N jumps to the next skip. On touch, buttons appear at the lower right.</p>
+    <button class="back">BACK</button>
+  </section>
 </div>
 
 <div id="end">

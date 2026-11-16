@@ -11,6 +11,20 @@ Play it at https://cmdjc.github.io/it-has-been-years/
 - Touch: the left half of the screen is a joystick for walking. Drag on the right half to look.
 - Keyboard and mouse: WASD or the arrow keys walk, Shift runs, and you drag the mouse to look.
 
+## Start menu
+
+- New game starts the walk from the beginning.
+- Chapters jumps to one of the 12 stages: the four walk stages, the five climb stages, the summit, the diving board, and the beam.
+- Credits names M K and Claude.
+- Debug has four options. The browser keeps them in localStorage.
+  - Walk speed: 1x, 4x, 16x, or 64x. It scales how fast you move.
+  - Fly: Space or E rises, and C or Q sinks. You cannot go below the ground.
+  - Skip key: N jumps to the next skip.
+  - Stats: shows the phase, your position, your altitude, and the frame rate at the upper left.
+  - On touch, Fly and Skip key show buttons at the lower right: SKIP, a rise arrow, and a sink arrow.
+
+Escape or BACK returns from a panel to the menu.
+
 ## Requirements
 
 - Node.js 22.12 or later.
@@ -33,7 +47,7 @@ npm ci
 | `npm run check` | Runs lint, the unit tests, and the build. Run it before each commit. |
 | `npm run e2e` | Builds the game and runs the browser tests. |
 
-## Debug flags
+## URL flags
 
 Add these query parameters to the game URL:
 

@@ -1,0 +1,28 @@
+[hidden]{display:none!important}
+#start{padding-block:4vh;overflow-y:auto;touch-action:pan-y;justify-content:safe center}
+#start .how{margin-bottom:1.6em}
+#menu{display:flex;flex-direction:column;gap:10px;width:min(17em,100%)}
+.panel{display:flex;flex-direction:column;align-items:center;width:min(26em,100%);max-height:100%;overflow-y:auto;touch-action:pan-y;background:rgba(241,250,250,.88);padding:1em 1.2em}
+.panel h2{font-weight:200;font-size:clamp(22px,6vw,30px);letter-spacing:.12em;text-transform:uppercase;margin:0 0 .8em}
+.panel p{margin:0 0 .7em;color:var(--soft);font-size:clamp(14px,3.8vw,16px);line-height:1.6}
+.panel .label{letter-spacing:.14em;text-transform:uppercase;font-size:13px;margin-bottom:.4em}
+.panel .help{font-size:13px;margin:1em 0}
+.panel button{width:100%;padding:.7em 1em;font-size:15px;letter-spacing:.2em;text-transform:uppercase}
+.panel .back{margin-top:.8em}
+#p-chapters{width:min(34em,100%)}
+#chapters{list-style:none;margin:0;padding:0;width:100%;display:flex;flex-direction:column;gap:6px}
+@media (min-width:560px){#chapters{display:grid;grid-template-columns:1fr 1fr;gap:6px}}
+.speeds{display:flex;gap:6px;width:100%}
+.speeds button{flex:1;padding:.7em 0;letter-spacing:.1em}
+.toggles{display:flex;flex-direction:column;gap:6px;width:100%;margin-top:10px}
+button[aria-pressed="true"],button[aria-pressed="true"]:active{background:var(--ink);color:var(--paper)}
+#stats{position:fixed;top:max(10px,env(safe-area-inset-top));left:max(10px,env(safe-area-inset-left));z-index:2;pointer-events:none;white-space:pre;font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;color:var(--ink);text-shadow:0 0 10px #f6fcfc,0 0 3px #f6fcfc}
+#dbar{position:fixed;right:max(12px,env(safe-area-inset-right));bottom:max(12px,env(safe-area-inset-bottom));z-index:2;display:flex;flex-direction:column;gap:8px}
+#dbar button{padding:.8em 1.2em;font-size:15px;letter-spacing:.18em;touch-action:none}
+@media (max-height:480px){
+#start{padding:3vh 6vw}
+#start h1{font-size:clamp(26px,9vh,40px);margin-bottom:.2em}
+#start .how{line-height:1.45;margin-bottom:.8em;font-size:13px}
+#menu{gap:6px}
+#menu button{padding:.5em 1em;font-size:15px}
+}

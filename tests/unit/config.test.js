@@ -120,3 +120,11 @@ describe("config", () => {
     expect(legacy).toMatch(/hint\("Climb\."\), 9600/);
   });
 });
+
+describe("chapters", () => {
+  it("lists the 12 stage codes with names", () => {
+    expect(config.CHAPTERS).toHaveLength(12);
+    expect(config.CHAPTERS.map(([code]) => code)).toEqual(["W0", "W1", "W2", "W3", "C0", "C1", "C2", "C3", "C4", "TOP", "TIP", "BEAM"]);
+    expect(config.CHAPTERS[10]).toEqual(["TIP", "The diving board"]);
+  });
+});

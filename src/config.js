@@ -67,3 +67,18 @@ export const HINTS = deepFreeze({
   climb: ["Climb.", 9.6],
   top: [["Walk out along the board.", 9.6], ["Look down.", 17.5]],
 });
+
+export const CHAPTERS = deepFreeze([
+  ["W0", "The walk"],
+  ["W1", "Closer"],
+  ["W2", "Closer still"],
+  ["W3", "The tower"],
+  ["C0", "The climb"],
+  ["C1", "Above the clouds"],
+  ["C2", "The sea ends"],
+  ["C3", "The sky goes out"],
+  ["C4", "Out of wall"],
+  ["TOP", "The summit"],
+  ["TIP", "The diving board"],
+  ["BEAM", "The beam"],
+]);
