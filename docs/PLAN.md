@@ -194,3 +194,17 @@ Codex reviewed the full rebuild on 2026-11-12. The verdict was APPROVE WITH CHAN
 - The arch rng-order test now fails if the two rng calls swap.
 
 After the fixes, `npm run check` passes with 329 unit tests, and `npm run e2e` passes with 32 tests.
+
+## Start menu and debug tools
+
+The owner asked for these on 2026-11-15:
+
+- The start screen gets a menu with four items: New game, Chapters, Credits, and Debug. Every player sees all four.
+- Chapters jump to the 12 stage codes, with short names.
+- Credits name M K and Claude.
+- Debug has a walk speed multiplier (1x, 4x, 16x, 64x), fly mode, a skip-now key and button, and a stats overlay. The browser remembers these settings in localStorage.
+
+| # | Task | Tests that must exist | State |
+|---|---|---|---|
+| 16 | Settings store, speed multiplier, fly mode, and skip-now in the game logic and input | settings load and save with bad storage, speed scales movement but not step cadence, fly rises and never goes below the ground, skip-now in each phase | todo |
+| 17 | Menu UI with chapters, credits, and debug panels, stats overlay, touch debug buttons, wiring in main.js, README | e2e: chapter jump, credits text, settings survive a reload, fast walk, fly, skip key | todo |
