@@ -206,5 +206,5 @@ The owner asked for these on 2026-11-15:
 
 | # | Task | Tests that must exist | State |
 |---|---|---|---|
-| 16 | Settings store, speed multiplier, fly mode, and skip-now in the game logic and input | settings load and save with bad storage, speed scales movement but not step cadence, fly rises and never goes below the ground, skip-now in each phase | todo |
+| 16 | Settings store, speed multiplier, fly mode, and skip-now in the game logic and input | settings load and save with bad storage, speed scales movement but not step cadence, fly rises and never goes below the ground, skip-now in each phase | done (99b2f0a) |
 | 17 | Menu UI with chapters, credits, and debug panels, stats overlay, touch debug buttons, wiring in main.js, README | e2e: chapter jump, credits text, settings survive a reload, fast walk, fly, skip key | todo |
