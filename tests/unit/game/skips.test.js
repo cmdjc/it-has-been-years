@@ -184,6 +184,12 @@ describe("pendingEvent", () => {
     expect(pendingEvent(topState({ topSkipI: 2, backSkipI: 3, player: far }))).toBeNull();
   });
 
+  it("triggers the beam when the movement segment passes through it", () => {
+    const state = (z0, z1, x) => topState({ topSkipI: 2, backSkipI: 3, prev: { x, z: z0 }, player: { x, z: z1 } });
+    expect(pendingEvent(state(TOP.BEAM_Z - 2.5, TOP.BEAM_Z + 2.5, 0))).toBe("beam");
+    expect(pendingEvent(state(TOP.BEAM_Z - 2.5, TOP.BEAM_Z + 2.5, 2))).toBeNull();
+  });
+
   it("suppresses top events during a dive or beam", () => {
     const player = { x: 0, z: -400 };
     expect(pendingEvent(topState({ player, dive: {} }))).toBeNull();

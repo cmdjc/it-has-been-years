@@ -138,6 +138,17 @@ describe("normal skip timeline", () => {
   });
 });
 
+describe("beam at high speed", () => {
+  it("starts the ending when a long step crosses the beam", () => {
+    const rig = buildRig();
+    rig.game.setOptions({ speed: 64, fly: false });
+    rig.game.stage("BEAM");
+    const { state } = rig.game;
+    for (let i = 0; i < 600 && state.beamEnd === null; i++) rig.advance(1 / 30, FORWARD);
+    expect(state.beamEnd).not.toBeNull();
+  });
+});
+
 describe("final skip timeline", () => {
   it("shows only on, mid, and the end card, and stays locked", () => {
     const rig = buildRig();

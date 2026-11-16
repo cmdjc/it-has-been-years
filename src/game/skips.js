@@ -47,14 +47,22 @@ export const curtainSteps = (final) => final
   ? [[0, "on"], [TIMELINE.TEXT_ON, "mid"], [TIMELINE.END_CARD, "end"]]
   : [[0, "on"], [TIMELINE.TEXT_ON, "mid"], [TIMELINE.TEXT_OFF, "textOff"], [TIMELINE.CURTAIN_OFF, "off"], [TIMELINE.UNLOCK, "unlock"]];
 
+function distanceToSegment(px, pz, from, to) {
+  const dx = to.x - from.x;
+  const dz = to.z - from.z;
+  const lengthSq = dx * dx + dz * dz;
+  const t = lengthSq === 0 ? 0 : Math.max(0, Math.min(1, ((px - from.x) * dx + (pz - from.z) * dz) / lengthSq));
+  return Math.hypot(from.x + t * dx - px, from.z + t * dz - pz);
+}
+
 export function pendingEvent(state) {
   if (state.skipping) return null;
   if (state.phase !== "top") return state.walked > state.nextSkip ? "skip" : null;
-  const { x, z } = state.player;
+  const { z } = state.player;
   const free = !state.dive && !state.beamEnd;
   if (free && state.topSkipI < SKIPS.TOP_AT.length && z < SKIPS.TOP_AT[state.topSkipI]) return "topSkip";
   if (free && !state.finalDone && z < DIVE_Z) return "dive";
   if (free && state.backSkipI < SKIPS.BACK_JUMP.length && z > state.backNext) return "back";
-  if (free && Math.hypot(x, z - TOP.BEAM_Z) < BEAM_RADIUS) return "beam";
+  if (free && distanceToSegment(0, TOP.BEAM_Z, state.prev ?? state.player, state.player) < BEAM_RADIUS) return "beam";
   return null;
 }

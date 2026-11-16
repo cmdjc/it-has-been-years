@@ -302,6 +302,7 @@ export function createGame({ view, mats, kit, overlay, engine, sfx, scheduler, r
     mats.causticTex.offset.x += dt * 0.02;
     mats.causticTex.offset.y += dt * 0.013;
     const frozen = state.skipping || state.dive || state.beamEnd;
+    state.prev = { x: player.x, z: player.z };
     stepPlayer(state, frozen ? { fwd: 0, str: 0, run: false } : input, dt, options.speed);
     if (state.phase !== "top") path.ensure(player.z, 1);
     const seg = path.segAt(player.z);

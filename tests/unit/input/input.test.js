@@ -191,6 +191,18 @@ describe("input", () => {
     expect(keyDowns).toEqual(["KeyP"]);
   });
 
+  it("leaves Space alone on a focused button", () => {
+    const button = document.getElementById("go");
+    const event = new KeyboardEvent("keydown", { code: "Space", cancelable: true, bubbles: true });
+    button.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(false);
+    expect(input.axes().rise).toBe(0);
+    const onBody = new KeyboardEvent("keydown", { code: "Space", cancelable: true, bubbles: true });
+    document.body.dispatchEvent(onBody);
+    expect(onBody.defaultPrevented).toBe(true);
+    expect(key("keydown", "Space")).toBe(false);
+  });
+
   it("prevents the default action for Space only", () => {
     expect(key("keydown", "Space")).toBe(false);
     expect(key("keydown", "KeyW")).toBe(true);

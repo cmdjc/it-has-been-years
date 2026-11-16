@@ -23,6 +23,7 @@ export function createInput(canvas, win, onLook, onKey = () => {}) {
   const addLook = (dx, dy, scale) => onLook(-dx * scale, -dy * scale);
 
   const onKeyDown = (e) => {
+    if (e.code === "Space" && e.target.closest?.("button, input, select, textarea, a")) return;
     keys[e.code] = true;
     if (e.code === "Space") e.preventDefault();
     if (!e.repeat) onKey(e.code);
