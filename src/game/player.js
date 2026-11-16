@@ -28,11 +28,11 @@ const clampTop = (player, nx, nz) => {
   return [clamp(nx, -lim, lim), Math.min(TOP.BEAM_Z + 60000, nz)];
 };
 
-export const stepPlayer = (s, input, dt) => {
+export const stepPlayer = (s, input, dt, speed = 1) => {
   let { fwd, str } = input;
   const m = Math.hypot(fwd, str);
   if (m > 1) { fwd /= m; str /= m; }
-  s.speedNow += (Math.min(1, m) * (input.run ? SPEED.RUN : SPEED.WALK) - s.speedNow) * Math.min(1, dt * 4);
+  s.speedNow += (Math.min(1, m) * (input.run ? SPEED.RUN : SPEED.WALK) * speed - s.speedNow) * Math.min(1, dt * 4);
   const sy = Math.sin(s.yaw);
   const cy = Math.cos(s.yaw);
   const dx = -sy * fwd + cy * str;
@@ -54,10 +54,13 @@ export const followGround = (s, groundY, dt) => {
   if (s.phase === "top" && player.z < -696) player.y = groundY;
 };
 
-export const stepGait = (s, dt) => {
-  s.stepPhase += s.speedNow * dt * 1.7;
+export const flyHeight = (y, groundY, rise, dt, speed) => Math.max(groundY, y + rise * SPEED.WALK * speed * dt);
+
+export const stepGait = (s, dt, speed = 1) => {
+  const pace = s.speedNow / speed;
+  s.stepPhase += pace * dt * 1.7;
   const sin = Math.sin(s.stepPhase);
-  const stepped = s.speedNow > 0.4 && s.lastSin * sin < 0;
+  const stepped = pace > 0.4 && s.lastSin * sin < 0;
   s.lastSin = sin;
-  return { stepped, bob: Math.abs(sin) * 0.04 * Math.min(1, s.speedNow / SPEED.WALK) };
+  return { stepped, bob: Math.abs(sin) * 0.04 * Math.min(1, pace / SPEED.WALK) };
 };

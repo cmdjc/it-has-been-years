@@ -237,3 +237,69 @@ describe("stage", () => {
     expect(climbG.children.length).toBeGreaterThan(0);
   });
 });
+
+describe("debug options", () => {
+  const WALK = { fwd: 1, str: 0, run: false };
+
+  it("setOptions speed multiplies how far the player walks", () => {
+    const base = buildRig();
+    const fast = buildRig();
+    [base, fast].forEach((rig) => rig.game.begin());
+    fast.game.setOptions({ speed: 4, fly: false });
+    runFor(base, WALK, 2);
+    runFor(fast, WALK, 2);
+    const walked = (rig) => 14 - rig.game.state.player.z;
+    expect(walked(fast) / walked(base)).toBeCloseTo(4, 1);
+  });
+
+  it("fly with rise lifts the player above the ground while z follows fwd", () => {
+    const rig = buildRig();
+    rig.game.begin();
+    rig.game.setOptions({ speed: 1, fly: true });
+    runFor(rig, { ...WALK, rise: 1 }, 2);
+    expect(rig.game.state.player.y).toBeGreaterThan(5);
+    expect(rig.game.state.player.z).toBeLessThan(10);
+  });
+
+  it("fly with negative rise never drops below the ground", () => {
+    const rig = buildRig();
+    rig.game.begin();
+    rig.game.setOptions({ speed: 1, fly: true });
+    runFor(rig, { ...WALK, rise: -1 }, 2);
+    expect(rig.game.state.player.y).toBeGreaterThanOrEqual(0);
+    runFor(rig, { ...WALK, rise: 1 }, 1);
+    runFor(rig, { ...WALK, rise: -1 }, 5);
+    expect(rig.game.state.player.y).toBe(0);
+  });
+
+  it("skipNow starts the first walk skip", () => {
+    const rig = buildRig();
+    rig.game.begin();
+    expect(rig.game.skipNow()).toBe(true);
+    expect(rig.game.state.skipN).toBe(1);
+    expect(rig.game.state.skipping).toBe(true);
+    expect(calls(rig.logs.overlay, "setText")[0].args[0]).toBe(yearsText(4));
+  });
+
+  it("skipNow does nothing before begin or while skipping", () => {
+    const rig = buildRig();
+    expect(rig.game.skipNow()).toBe(false);
+    expect(rig.game.state.skipN).toBe(0);
+    rig.game.begin();
+    expect(rig.game.skipNow()).toBe(true);
+    expect(rig.game.skipNow()).toBe(false);
+    expect(rig.game.state.skipN).toBe(1);
+  });
+
+  it("skipNow in the top phase stops after the scheduled top skips", () => {
+    const rig = buildRig();
+    rig.game.stage("TOP");
+    expect(rig.game.skipNow()).toBe(true);
+    expect(rig.game.state.topSkipI).toBe(1);
+    runUntil(rig, IDLE, () => !rig.game.state.skipping);
+    expect(rig.game.skipNow()).toBe(true);
+    runUntil(rig, IDLE, () => !rig.game.state.skipping);
+    expect(rig.game.state.topSkipI).toBe(SKIPS.TOP_AT.length);
+    expect(rig.game.skipNow()).toBe(false);
+  });
+});

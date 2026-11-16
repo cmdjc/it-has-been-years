@@ -15,7 +15,7 @@ import { startBeam, stepBeam } from "./beam.js";
 import { boardShape, boardTarget, stepBoard } from "./board.js";
 import { startDive, stepDive, wakeAtSea } from "./dive.js";
 import { groundHeight } from "./ground.js";
-import { createPlayerState, followGround, stepGait, stepPlayer } from "./player.js";
+import { createPlayerState, flyHeight, followGround, stepGait, stepPlayer } from "./player.js";
 import {
   backSkip, climbSkip, curtainSteps, jumpDistance, nextSkipAt, pendingEvent, topSkip, walkSkip, yearsText,
 } from "./skips.js";
@@ -33,6 +33,9 @@ export function createGame({ view, mats, kit, overlay, engine, sfx, scheduler, r
     backNext: 400, nextSkip: 260, finalDone: false, skipAlt: 0, board: { x: 0, v: 0 }, dive: null,
     beamEnd: null, time: 0, inTunnel: false,
   };
+
+  let options = { speed: 1, fly: false };
+  const setOptions = ({ speed, fly }) => { options = { speed, fly }; };
 
   const world = new THREE.Group();
   view.scene.add(world);
@@ -299,7 +302,7 @@ export function createGame({ view, mats, kit, overlay, engine, sfx, scheduler, r
     mats.causticTex.offset.x += dt * 0.02;
     mats.causticTex.offset.y += dt * 0.013;
     const frozen = state.skipping || state.dive || state.beamEnd;
-    stepPlayer(state, frozen ? { fwd: 0, str: 0, run: false } : input, dt);
+    stepPlayer(state, frozen ? { fwd: 0, str: 0, run: false } : input, dt, options.speed);
     if (state.phase !== "top") path.ensure(player.z, 1);
     const seg = path.segAt(player.z);
     state.inTunnel = Boolean(seg) && (seg.type === "tunnel" || seg.type === "atrium");
@@ -307,8 +310,10 @@ export function createGame({ view, mats, kit, overlay, engine, sfx, scheduler, r
       stepBoard(board, boardTarget({ x: player.x, z: player.z, divePhase: state.dive?.phase }), dt);
       bendBoard(top.boardParts, board.x);
     }
-    followGround(state, groundHeight({ phase: state.phase, x: player.x, z: player.z, seg, boardX: board.x }), dt);
-    const { stepped, bob } = stepGait(state, dt);
+    const groundY = groundHeight({ phase: state.phase, x: player.x, z: player.z, seg, boardX: board.x });
+    if (options.fly) player.y = flyHeight(player.y, groundY, frozen ? 0 : input.rise ?? 0, dt, options.speed);
+    else followGround(state, groundY, dt);
+    const { stepped, bob } = stepGait(state, dt, options.speed);
     if (stepped) {
       sfx.step(state.inTunnel);
       if (state.phase === "top" && player.z < -696) {
@@ -329,6 +334,13 @@ export function createGame({ view, mats, kit, overlay, engine, sfx, scheduler, r
     if (state.beamEnd) updateBeam(dt);
     const event = pendingEvent(state);
     if (event) triggers[event]();
+  }
+
+  function skipNow() {
+    if (!state.started || state.skipping || state.dive || state.beamEnd) return false;
+    if (state.phase === "top" && state.topSkipI >= SKIPS.TOP_AT.length) return false;
+    triggerSkip();
+    return true;
   }
 
   function begin() {
@@ -393,5 +405,5 @@ export function createGame({ view, mats, kit, overlay, engine, sfx, scheduler, r
     }
   }
 
-  return { state, begin, idle, look, update, stage };
+  return { state, begin, idle, look, update, stage, setOptions, skipNow };
 }

@@ -5,7 +5,7 @@ import { createInput } from "../../../src/input/input.js";
 
 const bodyHtml = readFileSync("index.html", "utf8").match(/<body>([\s\S]*)<\/body>/)[1];
 
-const key = (type, code) => window.dispatchEvent(new KeyboardEvent(type, { code }));
+const key = (type, code, init = {}) => window.dispatchEvent(new KeyboardEvent(type, { code, cancelable: true, ...init }));
 const mouse = (target, type, x, y) => target.dispatchEvent(new MouseEvent(type, { clientX: x, clientY: y, bubbles: true }));
 const touch = (target, type, points) => {
   const event = new Event(type, { cancelable: true, bubbles: true });
@@ -18,25 +18,27 @@ describe("input", () => {
   let canvas;
   let input;
   let looks;
+  let keyDowns;
   beforeEach(() => {
     document.body.innerHTML = bodyHtml;
     canvas = document.createElement("canvas");
     document.body.appendChild(canvas);
     window.innerWidth = 1000;
     looks = [];
-    input = createInput(canvas, window, (dYaw, dPitch) => looks.push([dYaw, dPitch]));
+    keyDowns = [];
+    input = createInput(canvas, window, (dYaw, dPitch) => looks.push([dYaw, dPitch]), (code) => keyDowns.push(code));
   });
   afterEach(() => input.dispose());
 
   it("reads key axes", () => {
     key("keydown", "KeyW");
     key("keydown", "ArrowRight");
-    expect(input.axes()).toEqual({ fwd: 1, str: 1, run: false });
+    expect(input.axes()).toEqual({ fwd: 1, str: 1, run: false, rise: 0 });
     key("keyup", "KeyW");
     key("keydown", "ArrowDown");
     key("keydown", "KeyA");
     key("keyup", "ArrowRight");
-    expect(input.axes()).toEqual({ fwd: -1, str: -1, run: false });
+    expect(input.axes()).toEqual({ fwd: -1, str: -1, run: false, rise: 0 });
   });
 
   it("opposite keys cancel", () => {
@@ -150,5 +152,47 @@ describe("input", () => {
     expect(event.defaultPrevented).toBe(false);
     touch(canvas, "touchstart", [[1, 100, 300]]);
     expect(document.getElementById("joy").style.display).not.toBe("block");
+  });
+
+  it("reads rise from Space, E, C, and Q", () => {
+    expect(input.axes().rise).toBe(0);
+    key("keydown", "Space");
+    expect(input.axes().rise).toBe(1);
+    key("keyup", "Space");
+    key("keydown", "KeyE");
+    expect(input.axes().rise).toBe(1);
+    key("keyup", "KeyE");
+    key("keydown", "KeyC");
+    expect(input.axes().rise).toBe(-1);
+    key("keyup", "KeyC");
+    key("keydown", "KeyQ");
+    expect(input.axes().rise).toBe(-1);
+  });
+
+  it("cancels opposite rise keys and combines with touch rise", () => {
+    key("keydown", "Space");
+    key("keydown", "KeyQ");
+    expect(input.axes().rise).toBe(0);
+    key("keyup", "Space");
+    input.setRise(1);
+    expect(input.axes().rise).toBe(0);
+    key("keyup", "KeyQ");
+    expect(input.axes().rise).toBe(1);
+    key("keydown", "KeyE");
+    expect(input.axes().rise).toBe(1);
+    input.setRise(0);
+    expect(input.axes().rise).toBe(1);
+  });
+
+  it("calls onKey once per keydown and ignores repeats", () => {
+    key("keydown", "KeyP");
+    key("keydown", "KeyP", { repeat: true });
+    key("keyup", "KeyP");
+    expect(keyDowns).toEqual(["KeyP"]);
+  });
+
+  it("prevents the default action for Space only", () => {
+    expect(key("keydown", "Space")).toBe(false);
+    expect(key("keydown", "KeyW")).toBe(true);
   });
 });

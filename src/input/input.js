@@ -1,14 +1,17 @@
+import { clamp } from "../core/math.js";
+
 const MOUSE_LOOK = 0.0035;
 const TOUCH_LOOK = 0.0052;
 const JOY_RADIUS = 55;
 
-export function createInput(canvas, win, onLook) {
+export function createInput(canvas, win, onLook, onKey = () => {}) {
   const doc = win.document;
   const joyEl = doc.getElementById("joy");
   const knob = doc.getElementById("knob");
   const keys = {};
   let jx = 0;
   let jy = 0;
+  let touchRise = 0;
   let joyId = null;
   let joyOriginX = 0;
   let joyOriginY = 0;
@@ -19,7 +22,11 @@ export function createInput(canvas, win, onLook) {
 
   const addLook = (dx, dy, scale) => onLook(-dx * scale, -dy * scale);
 
-  const onKeyDown = (e) => { keys[e.code] = true; };
+  const onKeyDown = (e) => {
+    keys[e.code] = true;
+    if (e.code === "Space") e.preventDefault();
+    if (!e.repeat) onKey(e.code);
+  };
   const onKeyUp = (e) => { keys[e.code] = false; };
   const onMouseDown = (e) => {
     dragging = true;
@@ -106,8 +113,10 @@ export function createInput(canvas, win, onLook) {
     axes() {
       const fwd = Number(keys.KeyW || keys.ArrowUp || 0) - Number(keys.KeyS || keys.ArrowDown || 0);
       const str = Number(keys.KeyD || keys.ArrowRight || 0) - Number(keys.KeyA || keys.ArrowLeft || 0);
-      return { fwd: jy + fwd, str: jx + str, run: Boolean(keys.ShiftLeft || keys.ShiftRight) };
+      const rise = Number(keys.Space || keys.KeyE || 0) - Number(keys.KeyC || keys.KeyQ || 0) + touchRise;
+      return { fwd: jy + fwd, str: jx + str, run: Boolean(keys.ShiftLeft || keys.ShiftRight), rise: clamp(rise, -1, 1) };
     },
+    setRise(value) { touchRise = value; },
     dispose() {
       winListeners.forEach(([type, fn]) => win.removeEventListener(type, fn));
       canvasListeners.forEach(([type, fn, opts]) => canvas.removeEventListener(type, fn, opts));

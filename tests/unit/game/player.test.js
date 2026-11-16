@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { stepPlayer, followGround, stepGait, createPlayerState } from "../../../src/game/player.js";
+import { stepPlayer, followGround, stepGait, flyHeight, createPlayerState } from "../../../src/game/player.js";
 import { SPEED, TOP } from "../../../src/config.js";
 
 const state = (over = {}) => ({ ...createPlayerState(), phase: "walk", ...over });
@@ -158,5 +158,52 @@ describe("stepGait", () => {
     const { bob } = stepGait(s, 1 / 60);
     expect(bob).toBeCloseTo(Math.abs(Math.sin(3.6 / 60 * 1.7)) * 0.04, 12);
     expect(s.lastSin).toBeCloseTo(Math.sin(3.6 / 60 * 1.7), 12);
+  });
+});
+
+describe("speed multiplier", () => {
+  it("settles at walk speed times the multiplier and covers that much more ground", () => {
+    const fast = state();
+    const slow = state();
+    const input = { fwd: 1, str: 0, run: false };
+    for (let i = 0; i < 600; i++) {
+      stepPlayer(fast, input, 1 / 60, 16);
+      stepPlayer(slow, input, 1 / 60);
+    }
+    expect(fast.speedNow).toBeCloseTo(3.6 * 16, 6);
+    const zFast = fast.player.z;
+    const zSlow = slow.player.z;
+    stepPlayer(fast, input, 1 / 60, 16);
+    stepPlayer(slow, input, 1 / 60);
+    expect((zFast - fast.player.z) / (zSlow - slow.player.z)).toBeCloseTo(16, 6);
+  });
+  it("keeps footstep cadence per second the same at any speed", () => {
+    const count = (speed) => {
+      const s = state({ speedNow: SPEED.WALK * speed });
+      let steps = 0;
+      for (let i = 0; i < 600; i++) if (stepGait(s, 1 / 60, speed).stepped) steps++;
+      return steps;
+    };
+    expect(count(4)).toBe(count(1));
+    expect(count(64)).toBe(count(1));
+  });
+  it("computes bob from the normalized speed", () => {
+    const s = state({ speedNow: SPEED.WALK * 4 });
+    const { bob } = stepGait(s, 1 / 60, 4);
+    expect(bob).toBeCloseTo(Math.abs(Math.sin(3.6 / 60 * 1.7)) * 0.04, 12);
+  });
+});
+
+describe("flyHeight", () => {
+  it("rises with positive rise, scaled by speed", () => {
+    expect(flyHeight(5, 0, 1, 1, 1)).toBeCloseTo(5 + 3.6, 12);
+    expect(flyHeight(5, 0, 1, 1, 4)).toBeCloseTo(5 + 3.6 * 4, 12);
+  });
+  it("sinks with negative rise and holds with zero", () => {
+    expect(flyHeight(5, 0, -1, 1, 1)).toBeCloseTo(5 - 3.6, 12);
+    expect(flyHeight(5, 0, 0, 1, 1)).toBe(5);
+  });
+  it("never goes below the ground", () => {
+    expect(flyHeight(1, 0.5, -1, 10, 64)).toBe(0.5);
   });
 });
